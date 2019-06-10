@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+**Thumbs.db
+data-raw/
+**.cache/
+**.RData
+**.rds
+**.rdb
+**.rdx
+**.png
+**.log
