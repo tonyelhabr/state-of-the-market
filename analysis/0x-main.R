@@ -1,6 +1,7 @@
 
 # library("tokenizers")
 # library("pdftools")
+filter <- dplyr::filter
 
 .paths <-
   fs::dir_ls(
@@ -47,11 +48,29 @@ text_sentences <-
   ) %>%
   select(-page) %>%
   unnest(sentences)
+text_sentences
 
 # TODO:
 # + Add "sections", possibly corresponding to the first sentence afer each page line.
 # + Remove page lines.
 # + Label figure lines?
+
+# + In 2016, actual page 1 is `idx_page = 29`. For 2017 it is 31. For 2018 it is 30.
+# + Page footers are noted by "2016 State of the Market Report | xxi /" or
+# "xx | 2016 State of the Market Report /"
+# on alternating pages.
+# + The first line for each new section is parsed imperfectly. For example,
+# on page 59 in 2016. "Day-Ahead Market Performance II" and
+# "DAY-AHEAD MARKET PERFORMANCE ERCOT's day-ahead ..." are parsed as two lines.
+# It should be "Day-Ahead Market Performance" for the page header and
+# "II DAY-AHEAD MARKET PERFORMANCE" for the section header,
+# then "ERCOT's day-ahead ..." for the first sentence of the body.
+text_sentences %>%
+  mutate(
+    is_page_num = sentence %>%  str_detect("^[0-9]{1,4}$")
+  ) %>%
+  filter(is_page_num)
+
 text_sentences %>%
   filter(sentence %>% str_detect("Figure [0-9]+[:]"))
 
