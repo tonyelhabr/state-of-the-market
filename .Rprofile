@@ -5,7 +5,7 @@ if(file.exists(path_r_profile)) {
 }
 rm("path_r_profile")
 
-library("tidyverse")
+# library("tidyverse")
 # library("rlang")
-library("teplot")
+# library("teplot")
 # invisible(R.utils::sourceDirectory(file.path("R"), recursive = FALSE))
