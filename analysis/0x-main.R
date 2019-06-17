@@ -109,11 +109,14 @@ section_rngs <-
   dplyr::filter(line_type == "section") %>%
   group_by(year) %>%
   mutate(page_num_end = coalesce(dplyr::lead(page_num) - 1, Inf)) %>%
-  select(year, page_num_start = page_num, page_num_end, section_label = label) %>%
+  mutate(idx_section = row_number()) %>%
   ungroup() %>%
-  mutate_at(vars(section_label), ~forcats::fct_inorder(.) %>% forcats::fct_rev())
+  mutate_at(vars(label), ~sprintf("%d. %s", idx_section, label)) %>%
+  mutate_at(vars(label), ~forcats::fct_inorder(.) %>% forcats::fct_rev()) %>%
+  select(year, page_num_start = page_num, page_num_end, section_label = label)
 section_rngs
-section_rngs %>% pull(section_label) %>% levels()
+section_label_lvls <- section_rngs %>% pull(section_label) %>% levels()
+section_label_lvls
 
 toc_aug_sections <-
   toc_aug %>%
@@ -171,31 +174,43 @@ scale_fill_custom <- function() {
 }
 
 toc_n %>% pull(section_label) %>% levels()
-viz_toc <-
-  toc_n %>%
-  # group_by(year) %>%
+toc_n_lists <- toc_n %>% dplyr::filter(line_type %in% c("table", "figure"))
+toc_n_1yr <- toc_n_lists %>%  dplyr::filter(year == 2018)
+toc_n_1yr
+toc_n_1yr_wfl <-
+  toc_n_1yr %>%
+  mutate_at(vars(section_label), as.character) %>%
+  ggwaffle::waffle_iron(ggwaffle::aes_d(group = section_label)) %>%
+  as_tibble() %>%
+  rename(section_label = group) %>%
+  mutate_at(vars(section_label), ~forcats::as_factor(section_label_lvls))
+toc_n_1yr_wfl
+
+viz_toc_n_1yr <-
+  toc_n_1yr_wfl %>%
   ggplot() +
-  aes(x = year, y = n, fill = section_label) +
-  geom_bar(position = "fill", stat = "identity") +
-  scale_y_continuous(labels = scales::percent_format()) +
+  aes(x = x, y = y, fill = section_label) +
+  ggwaffle::geom_waffle() +
+  coord_equal() +
   scale_fill_custom() +
   theme(
+    # axis.text.y = element_blank(),
+    # axis.text.x = element_blank(),
     panel.grid = element_blank()
   ) +
+  labs_xy_null() +
   labs(
     fill = "Section",
     title = "Composition of Potomac Economics' \"State of the Market\" Reports on ERCOT",
     subtitle = str_wrap(
-      "Count of subsections, figures and tables Appearing in Potomac Economics' \"State of the Market\" Reports on ERCOT between 2016 and 2018.", 90
-      ),
-    x = NULL,
-    y = NULL
+      "Count of figures and tables Appearing in Potomac Economics' \"State of the Market\" Reports on ERCOT bin 2018.", 90
+    )
   )
-viz_toc
+viz_toc_n_1yr
 
 toc_n1 <-
   toc_n %>%
-  dplyr::filter(n == 1)
+  dplyr::filter(line_type %in% c("table", "figure"), n == 1)
 toc_n1
 
 viz_toc_n1 <-
@@ -212,7 +227,7 @@ viz_toc_n1 <-
   labs(
     fill = "Section",
     title = "How Much Content was Really Unique in Each Report?",
-    subtitle = str_wrap("Count of subsections, figures and tables Appearing in only 1 of the 3 Potomac Economics' \"State of the Market\" Reports on ERCOT between 2016 and 2018.", 90),
+    subtitle = str_wrap("Count of  figures and tables Appearing in only 1 of the 3 Potomac Economics' \"State of the Market\" Reports on ERCOT between 2016 and 2018.", 90),
     caption = paste0(
       str_wrap("Day-Ahead Market (DAM) Performance, Reliability Unit Commitments (RUCs), and Resource Adequacy received more attention in 2018 than in past years.", 110),
       "\n\nVisualization by Tony ElHabr."),
@@ -309,7 +324,6 @@ paste_collapse <- function(x) {
   paste0("(^", paste(x, collapse = "$)|(^", sep = ""), "$)")
 }
 
-
 rgx_month_abbs <- month.abb %>% tolower() %>% paste_collapse()
 rgx_month_names <- month.name %>% tolower() %>% paste_collapse()
 # words_aug %>% dplyr::filter(word %>% str_detect(rgx_month_names))
@@ -372,6 +386,7 @@ words_aug <-
     )
   )
 words_aug
+
 sents_redux <-
   words_aug %>%
   group_by(year, idx_page, idx_sent, sent_type) %>%
@@ -379,6 +394,29 @@ sents_redux <-
   ungroup()
 sents_redux
 
+ngrams <-
+  sents_redux %>%
+  tidytext::unnest_tokens(
+    output = ngram,
+    input = sent,
+    to_lower = FALSE,
+    # strip_punct = FALSE,
+    # token = "skip_ngrams",
+    # n = 4,
+    # k = 2
+    token = "ngrams",
+    n = 6
+  )
+ngrams
+ngrams %>% dplyr::filter(ngram %>% str_detect("\\["))
+
+ngrams_tfidf <-
+  ngrams %>%
+  count(year, ngram) %>%
+  dplyr::filter(ngram %>% str_detect("year|month|day|10|1k|1M|1B", negate = TRUE)) %>%
+  tidytext::bind_tf_idf(ngram, year, n) %>%
+  arrange(desc(tf_idf))
+ngrams_tfidf
 
 sents_tfidf <-
   sents_redux %>%
