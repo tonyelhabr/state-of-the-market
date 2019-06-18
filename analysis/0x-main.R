@@ -8,6 +8,7 @@ library("teplot")
 
 filter <- dplyr::filter
 
+# paths ----
 paths <-
   fs::dir_ls(
     path = "data-raw",
@@ -23,6 +24,7 @@ paths_info <-
   select(year, path)
 paths_info
 
+# pages ----
 pages_nest <-
   paths_info %>%
   mutate(
@@ -55,6 +57,7 @@ body_pages <-
   filter(idx_page >= idx_page_start)
 body_pages
 
+# toc ----
 toc <-
   toc_pages %>%
   mutate(
@@ -272,10 +275,14 @@ toc_n1
 
 viz_toc_n1 <-
   toc_n1 %>%
+  group_by(year) %>%
+  mutate(idx = row_number()) %>%
+  ungroup() %>%
   ggplot() +
   aes(x = year, y = n, fill = section_label) +
   geom_col(color = "white") +
-  # guides(fill = guide_legend()) +
+  # geom_text(aes(label = label, y = idx), color = "white") +
+  guides(fill = FALSE) +
   # hrbrthemes::scale_fill_ipsum() +
   scale_fill_custom() +
   theme(
@@ -349,25 +356,25 @@ viz_section_rngs_n_1yr <-
   )
 viz_section_rngs_n_1yr
 
-# sents ---
-sents <-
+# lines ----
+lines <-
   body_pages %>%
   mutate(
-    sents = purrr::map(page, ~{
+    lines = purrr::map(page, ~{
       .x %>%
-        # str_squish() %>%
-        str_split(pattern = "[.]\\s?+") %>%
+        str_split("\\n") %>%
         purrr::map(str_squish) %>%
         unlist() %>%
-        enframe(name = "idx_sent", value = "sent")
+        enframe(name = "idx_line", value = "line")
     })
   ) %>%
   select(-page) %>%
-  unnest(sents)
-sents
+  unnest(lines) %>%
+  mutate_at(vars(line), tolower)
+lines
 
 # TODO:
-# + Add "sections", possibly corresponding to the first sentence afer each page line.
+# + Add "sections", possibly corresponding to the first lineence afer each page line.
 # + Remove page lines.
 # + Label figure lines?
 
@@ -380,8 +387,8 @@ sents
 # "DAY-AHEAD MARKET PERFORMANCE ERCOT's day-ahead ..." are parsed as two lines.
 # It should be "Day-Ahead Market Performance" for the page header and
 # "II DAY-AHEAD MARKET PERFORMANCE" for the section header,
-# then "ERCOT's day-ahead ..." for the first sentence of the body.
-sents
+# then "ERCOT's day-ahead ..." for the first lineence of the body.
+
 .head_reports <- function(data, ..., .n_rows = 30) {
   opt_old <- getOption("tibble.print_max")
   # options(tibble.print_min = .n_rows)
@@ -394,12 +401,12 @@ sents
 
 }
 
-sents_aug <-
-  sents %>%
-  mutate_at(vars(sent), ~str_remove_all(., "\\/\\s+")) %>%
+lines_aug <-
+  lines %>%
+  mutate_at(vars(line), ~str_remove_all(., "\\/\\s+")) %>%
   mutate_at(
-    vars(sent),
-    list(sent_type = ~case_when(
+    vars(line),
+    list(line_type = ~case_when(
       str_detect(., "^[A-Za-z]$") ~ "section_alphanumeric_label",
       str_detect(., "^[0-9]{1,2}$") ~ "list_item_ordered",
       str_detect(., "\\\uf0b7") ~ "list_item_unordered",
@@ -412,24 +419,69 @@ sents_aug <-
     )
     )
   )
-sents_aug %>% count(year, sent_type)
-sents_aug %>% count(sent_type)
-sents_aug %>% .head_reports(idx_page)
+# lines_aug %>% count(year, line_type)
+# lines_aug %>% count(line_type)
+# lines_aug %>% .head_reports(idx_page)
 
-paste_collapse <- function(..., start = "(^", end = "$)", collapse = paste(start, "|", end), sep = "") {
-  paste0(start, paste(..., collapse = collapse, sep = sep), end)
+# words ----
+paste_collapse <-
+  function(...,
+           start = "(",
+           end = ")",
+           collapse = paste0(end, "|", start),
+           sep = "") {
+    paste0(start, paste(..., collapse = collapse, sep = sep), end)
+  }
+
+paste_collapse_loosely <- paste_collapse
+
+paste_collapse_strictly <- function(..., start = "(^", end = "$)") {
+  paste_collapse(..., start = start, end = end)
 }
 
-rgx_month_abbs <- month.abb %>% tolower() %>% paste_collapse()
-rgx_month_names <- month.name %>% tolower() %>% paste_collapse()
-# words_aug %>% filter(word %>% str_detect(rgx_month_names))
-# words
+rgx_month_abbs <-
+  month.abb %>%
+  tolower() %>%
+  paste_collapse_strictly()
+rgx_month_abbs
+
+rgx_month_names <-
+  month.name %>%
+  tolower() %>%
+  paste_collapse_strictly()
+rgx_month_names
+
+rgx_month_abb1s <-
+  month.abb %>%
+  str_sub(end = 1) %>%
+  tolower() %>%
+  setdiff("a") %>%
+  paste_collapse_strictly()
+rgx_month_abb1s
+
+rgx_months <-
+  c(rgx_month_names, rgx_month_abbs, rgx_month_abb1s) %>%
+  paste_collapse(start = "", end = "", collapse = "|")
+rgx_months
+
+zones <- c("houston", "north", "south", "west")
+rgx_zones <-
+  zones %>%
+  # combinat::permn() %>%
+  purrr::map_chr(~paste_collapse(., start = "", end = "", collapse = "\\s")) %>%
+  paste_collapse_loosely()
+rgx_zones
+
+# TODO(?)
+# month_abbs2 <- c("m", "j", "j", "a", "s", "o", "n", "d")
+
+# stop_words <- tidytext::stop_words
 
 words <-
-  sents_aug %>%
+  lines_aug %>%
   tidytext::unnest_tokens(
     output = word,
-    input = sent
+    input = line
   ) %>%
   mutate_at(vars(word), ~stringi::stri_unescape_unicode(.) %>% str_remove_all(",")) %>%
   mutate_at(
@@ -437,8 +489,9 @@ words <-
     list(
       word_int = ~as.integer(.),
       word_num = ~as.numeric(.),
-      word_date = ~dplyr::case_when(
-        str_detect(., rgx_month_abbs) | str_detect(., rgx_month_names) ~ word,
+      word_month = ~dplyr::case_when(
+        # str_detect(., rgx_month_abbs) | str_detect(., rgx_month_names) ~ word,
+        str_detect(., rgx_months) ~ word,
         TRUE ~ NA_character_
       )
     )
@@ -450,7 +503,7 @@ words
 #   filter(dplyr::lag(word, 1) == "second")
 
 # stop_words <- stopwords::data_stopwords_snowball["en"] %>% unlist() %>% tibble(word = .)
-# stop_words <- tidytext::stop_words
+stop_words <- tidytext::stop_words
 
 words_aug <-
   words %>%
@@ -459,7 +512,7 @@ words_aug <-
   mutate_at(
     vars(word),
     list(~case_when(
-      !is.na(word_date) ~ "ZmonthZ",
+      !is.na(word_month) ~ "ZmonthZ",
       word_int == year ~ "ZyearZ",
       word_int == (year > 1) ~ "Zyearlead1Z",
       word_int == (year < 1) ~ "Zyearlag1Z",
@@ -480,36 +533,43 @@ words_aug <-
       # NOTE: "a" can also be a month label (for April/August), but it's also prevalently
       # used as an adjective, so its problemmatic.
       # Maybe just leave this filtering for later?
-      word %in% c("j", "f", "m", "s",  "o", "n", "d") ~ "ZmonthlabelZ",
-      is.na(word_num) & is.na(word_date) ~ word,
+      # word %in% c("j", "f", "m", "s",  "o", "n", "d") ~ "ZmonthlabelZ",
+      # str_detect(., rgx_months) ~ "ZmonthZ",
+      # str_detect(., rgx_zones) ~ "ZzoneZ",
       TRUE ~ word
     )
     )
   )
 words_aug
 
-# TODO!
-month_labs_1 <- c("j", "f", "mam", "j", "j", "a", "s", "o", "n", "d")
-month_labs_2 <- c("m", "j", "j", "a", "s", "o", "n", "d")
+# TODO: Ternary plot with no stopwords?
+filter_tokens_generic_at <- function(data, col = "") {
+  col_quo <- sym(col)
+  data %>%
+    filter(!!col_quo %>% str_detect("^Z|Z$|\\sZ|Z\\s", negate = TRUE))
+}
+filter_words_generic <- function(..., col = "word") {
+  filter_tokens_generic_at(..., col = col)
+}
 
-words_aug %>%
-  filter(word == "ZmonthlabelZ")
-  # filter(word == "j")
 
-sents_redux <-
+# words_aug %>% filter(word == "ZmonthlabelZ")
+# lintes_redux ----
+lines_redux <-
   words_aug %>%
-  group_by(year, idx_page, idx_sent, sent_type) %>%
-  summarise(sent = paste(word, collapse = " ")) %>%
+  group_by(year, idx_page, idx_line, line_type) %>%
+  summarise(line = paste(word, collapse = " ")) %>%
   ungroup()
-sents_redux
+lines_redux
+lines_redux %>% count(line_type)
 
-# DEbugging.
+# Debugging.
 # NOTE: These are single letter chart labels for months.
-# sents_redux %>% filter(sent %>% str_detect("j j a s o n d j")) -> z1
+# lines_redux %>% filter(line %>% str_detect("j j a s o n d j")) -> z1
 # z1 %>% clipr::write_clip()
-# sents_redux %>% filter(sent %>% str_detect("f mam j j a s o n")) -> z2
+# lines_redux %>% filter(line %>% str_detect("f mam j j a s o n")) -> z2
 # z2 %>% clipr::write_clip()
-# sents_redux %>% filter(sent %>% str_detect("houston north south west houston north south west")) -> z3
+# lines_redux %>% filter(line %>% str_detect("houston north south west houston north south west")) -> z3
 # z3 %>% clipr::write_clip()
 
 # words_pmi ----
@@ -556,12 +616,12 @@ sents_redux
 # }
 #
 # words_pmi <-
-#   sents_redux %>%
-#   tidytext::unnest_tokens(output = word, input = sent) %>%
+#   lines_redux %>%
+#   tidytext::unnest_tokens(output = word, input = line) %>%
 #   add_count(word) %>%
 #   filter(n >= 20) %>%
 #   select(-n) %>%
-#   slide_windows(rlang::quo(idx_sent), 4) %>%
+#   slide_windows(rlang::quo(idx_line), 4) %>%
 #   widyr::pairwise_pmi(word, window_id)
 # words_pmi
 # words_pmi %>% arrange(desc(pmi))
@@ -577,7 +637,7 @@ unnest_tokens_ngrams <- function(data, .n, ...) {
   tidytext::unnest_tokens(
     data,
     output = ngram,
-    input = sent,
+    input = line,
     to_lower = FALSE,
     token = "ngrams",
     n = .n,
@@ -588,27 +648,24 @@ unnest_tokens_ngrams <- function(data, .n, ...) {
 
 ngrams <-
   bind_rows(
-    unnest_tokens_ngrams(sents_redux, 4),
-    unnest_tokens_ngrams(sents_redux, 6),
-    unnest_tokens_ngrams(sents_redux, 8)
+    # unnest_tokens_ngrams(lines_redux, 4),
+    unnest_tokens_ngrams(lines_redux, 6),
+    unnest_tokens_ngrams(lines_redux, 8),
+    unnest_tokens_ngrams(lines_redux, 10),
+    unnest_tokens_ngrams(lines_redux, 12)
   )
 
 ngrams
 
-zones <- c("houston", "north", "south", "west")
-zones_rgx <-
-  zones %>%
-  combinat::permn() %>%
-  purrr::map_chr(~paste_collapse(., start = "", end = "", collapse = "\\s")) %>%
-  paste_collapse(start = "(", end = ")", collapse = ")|(")
-zones_rgx
-# ngrams %>% filter(sent_type == "content") %>% filter(ngram %>% str_detect(zones_rgx, negate = FALSE))
+# ngrams %>% filter(line_type == "content") %>% filter(ngram %>% str_detect(zones_rgx, negate = FALSE))
+
 ngrams_filt <-
   ngrams %>%
-  filter(sent_type == "content") %>%
+  # filter(line_type == "content") %>%
+  # NOTE: Filter out the marked ngrams.
   filter(ngram %>% str_detect("^Z|Z$|\\sZ|Z\\s", negate = TRUE)) %>%
   # filter(ngram %>% str_detect("(houston\\snorth\\ssouth\\swest)", negate = TRUE))
-  filter(ngram %>% str_detect(zones_rgx, negate = TRUE))
+  filter(ngram %>% str_detect(rgx_zones, negate = TRUE))
 ngrams_filt
 
 n_k_max <-
@@ -633,7 +690,8 @@ ngrams_tfidf <-
   tidytext::bind_tf_idf(term = ngram, document = year, n = n)
 ngrams_tfidf
 
-# larger n-grams are more likely to have higher TFIDF, so need to account
+# What were the most "unique" ngrams?
+# NOTE: Larger n-grams are more likely to have higher TFIDF, so need to account
 # for this by dividing by `n_k_factor`.
 ngrams_tfidf_aug <-
   ngrams_tfidf %>%
@@ -644,44 +702,48 @@ ngrams_tfidf_aug <-
   mutate(tf_idf_adj = tf_idf / n_k_factor) %>%
   arrange(desc(tf_idf))
 ngrams_tfidf_aug
+# ngrams_tfidf_aug %>% arrange(desc(tf_idf_adj)) %>% mutate(rnk = row_number()) %>% filter(k == 6)
 
-ngrams_tfidf_aug %>%
-  filter(k >= 8) %>%
+# What were the most used exteneded ngrams.?(In this case, extended = ngram of 8 tokens.)
+ngrams_tf_maxk <-
+  ngrams_tfidf_aug %>%
+  filter(k >= max(k)) %>%
   group_by(k, ngram) %>%
   summarise(n = sum(n), tf = mean(n * tf)) %>%
   ungroup() %>%
   arrange(desc(tf))
+ngrams_tf_maxk
 
-# sents_tfidf <-
-#   sents_redux %>%
-#   count(year, sent) %>%
+# lines_tfidf <-
+#   lines_redux %>%
+#   count(year, line) %>%
 #   # mutate(n = 1) %>%
-#   tidytext::bind_tf_idf(sent, year, n) %>%
+#   tidytext::bind_tf_idf(line, year, n) %>%
 #   arrange(desc(tf_idf))
-# sents_tfidf
+# lines_tfidf
 #
 # n_top <- 10
-# sents_tfidf_top <-
-#   sents_tfidf %>%
+# lines_tfidf_top <-
+#   lines_tfidf %>%
 #   group_by(year) %>%
 #   arrange(desc(tf_idf), .by_group = TRUE) %>%
-#   filter(sent %>% str_detect("\\[|admin", negate = TRUE)) %>%
+#   filter(line %>% str_detect("\\[|admin", negate = TRUE)) %>%
 #   slice(c(1:n_top)) %>%
 #   ungroup()
-# sents_tfidf_top
+# lines_tfidf_top
 
-# Using this?
-sents_redux_n <-
-  sents_redux %>%
-  count(sent_type, sent, sort = TRUE) %>%
-  # filter(!(sent_type %in% c("page_footer", "section_alphanumeric_label"))) %>%
-  filter(sent_type == "content")
-sents_redux_n
+# FIXME: Using this?
+# lines_redux_n <-
+#   lines_redux %>%
+#   count(line_type, line, sort = TRUE) %>%
+#   # filter(!(line_type %in% c("page_footer", "section_alphanumeric_label"))) %>%
+#   filter(line_type == "content")
+# lines_redux_n
 
-# sents_redux_n1 <-
-#   sents_redux_n %>%
+# lines_redux_n1 <-
+#   lines_redux_n %>%
 #   filter(n > 1)
-# sents_redux_n1
+# lines_redux_n1
 
 words_n <-
   words_aug %>%
@@ -711,6 +773,58 @@ words_tfidf <-
   tidytext::bind_tf_idf(word, year, n) %>%
   arrange(desc(tf_idf))
 words_tfidf
+
+words_filt <-
+  words_tfidf %>%
+  filter_words_generic() %>%
+  anti_join(stop_words)
+words_filt
+# library("ggtern")
+arrws <- tibble(
+  x = c(1, 0, 0),
+  y = c(0, 1, 0),
+  z = c(0, 0, 1),
+  xend = c(0, 1, 1),
+  yend = c(1, 0, 1),
+  zend = c(1, 1, 0)
+)
+words_tern <-
+  words_filt %>%
+  select(year, word, tf) %>%
+  spread(year, tf)
+words_tern
+
+words_tern_mark <-
+  words_filt %>%
+  mutate(.year = year, idx = row_number()) %>%
+  select(.year, idx, year, word, tf) %>%
+  spread(year, tf) %>%
+  arrange(idx)
+words_tern_mark
+
+viz_words_tern <-
+  words_tern %>%
+  ggtern::ggtern() +
+  aes(x = `2016`, y = `2017`, z = `2018`) +
+  ggtern::geom_mask() +
+  geom_segment(
+    data = arrws,
+    aes(x, y, z, xend = xend, yend = yend, zend = zend),
+    color = "grey",
+    size = 1
+  ) +
+  geom_point() +
+  geom_label(
+    data = words_tern %>% slice(c(1:10)),
+    aes(label = word)
+  ) +
+  theme(legend.position = "none") +
+  # ggforce::geom_mark_circle(
+  #   data = words_tern_mark %>% filter(idx <= 10),
+  #   aes(label = word)
+  # ) +
+  ggtern::theme_classic()
+viz_words_tern
 
 # Reference: fig 3.4 at https://www.tidytextmining.com/tfidf.html#tfidf
 viz_tfidf <-
