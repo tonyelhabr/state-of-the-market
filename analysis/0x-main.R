@@ -1,83 +1,113 @@
+#' ---
+#' title: "ISYE 6414: Homework 2 Peer Assessment Assignment"
+#' author: ""
+#' output:
+#'   html_document:
+#'     theme: cosmo
+#'     highlight: haddock
+#'     toc: true
+#'     toc_depth: 3
+#' ---
 
+#+ postprocess, include=F, echo=F, cache=F
+.path_r <- path.expand(rstudioapi::getSourceEditorContext()$path)
+.path_sans_ext <- tools::file_path_sans_ext(.path_r)
+.path_rmd <- paste0(.path_sans_ext, ".Rmd")
+# rmarkdown::render(knitr::spin(.path_r, knit = FALSE))
+# spelling::spell_check_files(.path_rmd)
+
+#+ setup, include=F, cache=F
+knitr::opts_knit$set(root.dir = here::here())
+knitr::opts_chunk$set(
+  # rows.print = 25,
+  # rows.print = 25,
+  echo = FALSE,
+  # cache = FALSE,
+  cache = TRUE,
+  include = TRUE,
+  fig.show = "asis",
+  fig.align = "center",
+  fig.width = 6,
+  # size = "small",
+  # fig.height = 4.5,
+  # fig.width = 5,
+  # out.width = 5,
+  fig.asp = 0.75,
+  warning = FALSE,
+  message = FALSE
+)
+# .width <- getOption("width")
+# options(width = 999)
+# on.exit(options(width = .width))
+# options(tibble.width = Inf)
+# options(tibble.print_max = Inf)
+
+#+ pkg-import-1, include=F, echo=F
 # library("tokenizers")
 # library("pdftools")
 # filter <- dplyr::filter
 library("tidyverse")
 library("teplot")
 # library("awtools")
-
 filter <- dplyr::filter
 
-# paths ----
-paths <-
-  fs::dir_ls(
-    path = "data-raw",
-    regexp = "pdf$"
-  )
-paths_info <-
-  paths %>%
-  as.character() %>%
-  tibble(path = .) %>%
-  mutate(
-    year = path %>% str_extract("201[0-8]") %>% as.integer()
-  ) %>%
-  select(year, path)
-paths_info
+#+ functions-1, include=F
+# "https://www.potomaceconomics.com/wp-content/uploads/2019/06/2018-State-of-the-Market-Report.pdf"
+# "https://www.potomaceconomics.com/wp-content/uploads/2018/05/2017-State-of-the-Market-Report.pdf"
+# "https://www.potomaceconomics.com/wp-content/uploads/2017/06/2016-ERCOT-State-of-the-Market-Report.pdf"
+validate_likeinteger <-
+  function(x, nm = deparse(substitute(x))) {
+    lgl <- !is.na(as.integer(x))
+    if(!lgl) {
+      msg <- sprintf("`%s` is not integer-like.", nm)
+      stop(msg, call. = FALSE)
+    }
+    x
+  }
 
-# pages ----
-pages_nest <-
-  paths_info %>%
-  mutate(
-    page = purrr::map(path, ~pdftools::pdf_text(.))
-  ) %>%
-  select(-path)
+download_sotm_report <- function(year, destfile = NULL, dir = "data-raw", quiet = TRUE, ...) {
+  # validate_likeinteger(year)
+  stopifnot(is.numeric(year), length(year) == 1, year >= 2016, year <= 2018)
+  year_lead1 <- year + 1
+  month <- ifelse(year == 2017, 5, 6)
+  frmt <- "https://www.potomaceconomics.com/wp-content/uploads/%04d/%02d/%04d%s-State-of-the-Market-Report.pdf"
+  prefix <- ifelse(year == 2016, "-ERCOT", "")
+  url <- sprintf(frmt, year_lead1, month, year, prefix)
+  if(is.null(destfile)) {
+    if(!is.null(dir)) {
+      if(!dir.exists(dir)) {
+        message(sprintf("Creating `dir` at %s.", dir))
+        invisible(dir.create(dir, recursive = TRUE))
+      }
+    }
+    basename <- basename(url)
+    destfile = file.path(dir, basename)
+  }
+  if(file.exists(destfile)) {
+    message(sprintf("Not downloading file for `year` = %04d because it has already been downloaded.", year))
+    return(destfile)
+  }
+  status <- download.file(url = url, destfile = destfile, quiet = TRUE, ...)
+  if(status != 0) {
+    stop(sprintf("Could not donwload file for `year` = %04d (from %s).", year, url), call. = FALSE)
+  }
+  invisible(destfile)
+}
 
-pages <-
-  pages_nest %>%
-  unnest(page) %>%
-  group_by(year) %>%
-  mutate(idx_page = row_number()) %>%
-  ungroup()
-pages
+convert_page_to_lines <- function(page) {
+  page %>%
+    str_split("\\n") %>%
+    purrr::map(str_squish) %>%
+    unlist() %>%
+    enframe(name = "idx_line", value = "line")
+}
 
-pages_n <-
-  pages_nest %>%
-  mutate(n_page = purrr::map_int(page, ~length(.x))) %>%
-  select(-page)
-pages_n
-
-idx_page_start <- 7L
-toc_pages <-
+unnest_pages <- function(pages) {
   pages %>%
-  filter(idx_page >= 3L, idx_page <= (idx_page_start - 1))
-toc_pages
-
-body_pages <-
-  pages %>%
-  filter(idx_page >= idx_page_start)
-body_pages
-
-# toc ----
-toc <-
-  toc_pages %>%
-  mutate(
-    lines = purrr::map(page, ~{
-      .x %>%
-        str_split("\\n") %>%
-        purrr::map(str_squish) %>%
-        unlist() %>%
-        enframe(name = "idx_line", value = "line")
-    })
-  ) %>%
-  select(-page) %>%
-  unnest(lines) %>%
-  mutate_at(
-    vars(line),
-    ~str_to_lower(.) %>%
-      str_replace_all("[.]+", "-") %>%
-      str_replace_all("201[2-9]", "[year]")
-  )
-toc
+    mutate(lines = purrr::map(page, convert_page_to_lines)) %>%
+    select(-page) %>%
+    unnest(lines)
+}
 
 # `utils:::.roman2numeric()`, but without the warning clause.
 roman2numeric <- function (x) {
@@ -100,6 +130,198 @@ roman2numeric <- function (x) {
   }
 }
 
+subset_content <- function(data) {
+  data %>%
+    filter(line_type %in% c("table", "figure"))
+}
+
+.dir_viz <- "analysis/figs"
+theme_custom <- function(...) {
+  teplot::theme_te(
+    base_family = "",
+    base_size = 14,
+    legend.title = element_text(face = "bold"),
+    legend.position = "right"
+  ) +
+    # hrbrthemes::theme_ipsum() +
+    theme(
+      # legend.key.height = unit(1.5, "cm"),
+      # legend.spacing.y = unit(0.5, "cm"),
+      plot.title = element_text(size = 22),
+      plot.subtitle = element_text(size = 18),
+      legend.title = element_text(size = 16),
+      legend.text = element_text(size = 16)
+    )
+}
+ggplot2::theme_set(theme_custom())
+
+labs_xy_null <- function(...) {
+  labs(
+    ...,
+    x = NULL,
+    y = NULL
+  )
+}
+
+scale_fill_custom <- function() {
+  ggthemes::scale_fill_tableau(labels = function(x) str_wrap(x, width = 30))
+}
+
+head_reports <- function(data, ..., .n_rows = 30) {
+  opt_old <- getOption("tibble.print_max")
+  # options(tibble.print_min = .n_rows)
+  options(tibble.print_max = .n_rows)
+  on.exit(options(tibble.print_min = opt_old))
+  data %>%
+    group_by(year, ...) %>%
+    slice(c(1:10), .preserve = FALSE) %>%
+    ungroup()
+}
+
+paste_collapse <-
+  function(...,
+           start = "(",
+           end = ")",
+           collapse = paste0(end, "|", start),
+           sep = "") {
+    paste0(start, paste(..., collapse = collapse, sep = sep), end)
+  }
+
+paste_collapse_loosely <- paste_collapse
+
+paste_collapse_strictly <- function(..., start = "(^", end = "$)") {
+  paste_collapse(..., start = start, end = end)
+}
+
+.delim <- "QQ"
+drop_tokens_generic_at <- function(data, col = "", delim = .delim) {
+  col_quo <- sym(col)
+  rgx <- sprintf("^%s|%s$|\\s%s|%s\\s", delim, delim, delim, delim)
+  data %>%
+    filter(!!col_quo %>% str_detect(rgx, negate = TRUE))
+}
+
+drop_words_generic <- function(..., col = "word") {
+  drop_tokens_generic_at(..., col = col)
+}
+
+drop_ngrams_generic <- function(..., col = "ngram") {
+  drop_tokens_generic_at(..., col = col)
+}
+
+
+unnest_tokens_ngrams <- function(data, .n, ...) {
+  tidytext::unnest_tokens(
+    data,
+    output = ngram,
+    input = line,
+    to_lower = FALSE,
+    token = "ngrams",
+    n = .n,
+    ...
+  ) %>%
+    mutate(k = .n)
+}
+
+#+ viz-vars-1, include=F, eval=F, echo=F
+viz_footer <- "By: Tony ElHabr.\nData source: https://www.potomaceconomics.com/markets-monitored/ercot/.\n"
+viz_label_static_1 <- "Potomac Economics' \"State of the Market\" Reports on ERCOT"
+viz_label_static_2 <- "figures and tables"
+
+#+ download_sotm_report-1, include=T, eval=F, echo=T
+years <- 2016L:2018L
+# NOTE: `download_sotm_report` is a custom function.
+paths <-
+  years %>%
+  purrr::map_chr(download_sotm_report)
+paths
+
+#+ paths-1, include=F, eval=T, echo=F
+paths <-
+  list.files(
+    path = "data-raw",
+    pattern = "pdf$",
+    full.names = TRUE
+  )
+paths
+
+#+ paths_INFO-1, include=T, eval=T, echo=T
+paths_info <-
+  paths %>%
+  tibble(path = .) %>%
+  mutate(
+    year = path %>% str_extract("201[0-8]") %>% as.integer()
+  ) %>%
+  select(year, path)
+paths_info
+
+#+ pages_nest-1, include=T, eval=T, echo=T
+pages_nest <-
+  paths_info %>%
+  mutate(
+    page = purrr::map(path, ~pdftools::pdf_text(.))
+  ) %>%
+  select(-path)
+pages_nest
+
+#+ pages-1, include=T, eval=T, echo=T
+pages <-
+  pages_nest %>%
+  unnest(page) %>%
+  group_by(year) %>%
+  mutate(idx_page = row_number()) %>%
+  ungroup()
+pages
+
+#+ pages_n-1, include=T, eval=T, echo=T
+pages_n <-
+  pages_nest %>%
+  mutate(n_pages = purrr::map_int(page, ~length(.x))) %>%
+  select(-page)
+pages_n
+
+#+ toc_pages-1, include=T, eval=T, echo=T
+# NOTE: These are the same across all reports.
+toc_page_start <- 3L
+toc_page_end <- 7L
+toc_pages <-
+  pages %>%
+  filter(idx_page >= 3L, idx_page <= (toc_page_end - 1))
+toc_pages
+
+#+ body_pages-1, include=T, eval=T, echo=T
+body_pages <-
+  pages %>%
+  filter(idx_page >= toc_page_end)
+body_pages
+
+#+ body_rngs-1, include=F, eval=F, echo=F
+body_rngs <-
+  body_pages %>%
+  filter(page %>% str_detect("Executive Summary")) %>%
+  group_by(year) %>%
+  filter(idx_page == last(idx_page)) %>%
+  ungroup() %>%
+  select(-page) %>%
+  rename(page_start = idx_page) %>%
+  mutate_at(vars(page_start), list(~ifelse(year == 2016, . + 2L, . + 1L))) %>%
+  left_join(pages_n) %>%
+  mutate(page_end = n_pages - page_start + 1L)
+body_rngs
+
+#+ toc-1, include=T, eval=T, echo=T
+toc <-
+  toc_pages %>%
+  unnest_pages() %>%
+  mutate_at(
+    vars(line),
+    ~str_to_lower(.) %>%
+      str_replace_all("[.]+", "-") %>%
+      str_replace_all("201[2-9]", "[year]")
+  )
+toc
+
+#+ toc_aug-1, include=T, eval=T, echo=T
 toc_aug <-
   toc %>%
   filter(line %>% str_detect("executive|contents|state\\sof\\sthe|list\\sof", negate = TRUE)) %>%
@@ -130,6 +352,7 @@ toc_aug <-
   mutate_at(vars(label), str_trim) %>%
   mutate_at(
     vars(line),
+    # NOTE: `NA`s will be introduced here.
     list(index = ~case_when(
       line_type %in% c("figure", "table") ~ str_replace(., "(^[a-z]+\\s?+)([0-9]+)([:].*$)", "\\2"),
       TRUE ~ NA_character_
@@ -148,21 +371,33 @@ toc_aug <-
   select(-idx_page, -idx_line, -line)
 toc_aug
 
+#+ section_rngs-1, include=T, eval=T, echo=T
 section_rngs <-
   toc_aug %>%
   filter(line_type == "section") %>%
   group_by(year) %>%
   left_join(pages_n) %>%
-  mutate(page_num_end = coalesce(dplyr::lead(page_num) - 1L, n_page)) %>%
+  mutate(page_end = coalesce(dplyr::lead(page_num) - 1L, n_pages)) %>%
   mutate(idx_section = row_number()) %>%
   ungroup() %>%
-  mutate_at(vars(label), ~sprintf("%d. %s", idx_section, label)) %>%
-  mutate_at(vars(label), ~forcats::fct_inorder(.) %>% forcats::fct_rev()) %>%
-  select(year, page_num_start = page_num, page_num_end, section_label = label)
+  # NOTE: Reverse the order for the plots.
+  mutate_at(
+    vars(label),
+    ~sprintf("%d. %s", idx_section, label) %>%
+      forcats::fct_inorder(.) %>%
+      forcats::fct_rev()
+  ) %>%
+  select(year, page_start = page_num, page_end, section_label = label)
 section_rngs
+
+#+ section_rngs-2, include=F, eval=F, echo=F
+# ~~FIXME: `page_start` is not really correct! It needs to account for the TOC and Exective Summary.~~
+
+#+ section_label_lvls-1, include=F, eval=T, echo=F
 section_label_lvls <- section_rngs %>% pull(section_label) %>% levels()
 section_label_lvls
 
+#+ toc_sections-1, include=T, eval=T, echo=T
 toc_sections <-
   toc_aug %>%
   filter(line_type %in% c("subsection", "figure", "table")) %>%
@@ -170,8 +405,8 @@ toc_sections <-
     section_rngs,
     by = c(
       "year" = "year",
-      "page_num" = "page_num_start",
-      "page_num" = "page_num_end"
+      "page_num" = "page_start",
+      "page_num" = "page_end"
     ),
     match_fun = list(`==`, `>=`, `<=`)
   ) %>%
@@ -179,6 +414,7 @@ toc_sections <-
   rename(year = year.x)
 toc_sections
 
+#+ toc_n-1, include=T, eval=T, echo=T
 toc_n <-
   toc_sections %>%
   group_by(line_type, label) %>%
@@ -186,50 +422,18 @@ toc_n <-
   ungroup()
 toc_n
 
+#+ toc_n-2, include=F, eval=F, echo=F
 toc_n %>% pull(section_label) %>% levels()
 
-filter_lists <- function(data) {
-  data %>%
-    filter(line_type %in% c("table", "figure"))
-}
+#+ toc_content_n-1, include=F, eval=F, echo=F
+toc_content_n <- toc_n %>% subset_content()
+toc_content_n
 
-toc_n_lists <-
-  toc_n %>%
-  filter_lists()
-toc_n_lists
-
-theme_custom<- function(...) {
-  teplot::theme_te(
-    base_family = "",
-    base_size = 14,
-    legend.title = element_text(face = "bold"),
-    legend.position = "right"
-  ) +
-    # hrbrthemes::theme_ipsum() +
-    theme(
-      # legend.key.height = unit(1.5, "cm"),
-      # legend.spacing.y = unit(0.5, "cm"),
-      plot.title = element_text(size = 22),
-      plot.subtitle = element_text(size = 18),
-      legend.title = element_text(size = 16),
-      legend.text = element_text(size = 16)
-    )
-}
-ggplot2::theme_set(theme_custom())
-labs_xy_null <- function(...) {
-  labs(
-    ...,
-    x = NULL,
-    y = NULL
-  )
-}
-
-scale_fill_custom <- function() {
-  ggthemes::scale_fill_tableau(labels = function(x) str_wrap(x, width = 30))
-}
-
-toc_n_1yr <- toc_n_lists %>%  filter(year == 2018)
+#+ toc_n_1yr-1, include=F, eval=F, echo=F
+toc_n_1yr <- toc_content_n %>%  filter(year == 2018)
 toc_n_1yr
+
+#+ toc_n_1yr_wfl-1, include=F, eval=F, echo=F
 toc_n_1yr_wfl <-
   toc_n_1yr %>%
   mutate_at(vars(section_label), as.character) %>%
@@ -239,11 +443,7 @@ toc_n_1yr_wfl <-
   mutate_at(vars(section_label), ~factor(., section_label_lvls))
 toc_n_1yr_wfl
 
-
-viz_footer <- "By: Tony ElHabr.\nData source: https://www.potomaceconomics.com/markets-monitored/ercot/.\n"
-viz_label_static_1 <- "Potomac Economics' \"State of the Market\" Reports on ERCOT"
-viz_label_static_2 <- "figures and tables"
-
+#+ viz_toc_n_1yr-1, include=F, eval=F, echo=F
 viz_toc_n_1yr <-
   toc_n_1yr_wfl %>%
   ggplot() +
@@ -268,13 +468,22 @@ viz_toc_n_1yr <-
   )
 viz_toc_n_1yr
 
-toc_n1 <-
-  toc_n %>%
-  filter(line_type %in% c("table", "figure"), n == 1)
-toc_n1
+#+ viz_toc_n_1yr-2, include=F, eval=F, echo=F
+teproj::export_ext_png(
+  viz_toc_n_1yr,
+  dir = .dir_viz,
+  units = "in",
+  height = 7,
+  width = 10
+)
 
-viz_toc_n1 <-
-  toc_n1 %>%
+#+ toc_content_n-1, include=F, eval=F, echo=F
+toc_content_n1 <- toc_content_n %>% filter(n == 1)
+toc_content_n1
+
+#+ viz_toc_content_n1-1, include=F, eval=F, echo=F
+viz_toc_content_n1 <-
+  toc_content_n1 %>%
   group_by(year) %>%
   mutate(idx = row_number()) %>%
   ungroup() %>%
@@ -308,22 +517,32 @@ viz_toc_n1 <-
     )
   ) +
   coord_flip()
-viz_toc_n1
+viz_toc_content_n1
 
+#+ viz_toc_content_n1-2, include=F, eval=F, echo=F
+teproj::export_ext_png(
+  viz_toc_content_n1,
+  dir = .dir_viz,
+  units = "in",
+  height = 7,
+  width = 10
+)
+
+#+ section_rngs_n-1, include=F, eval=F, echo=F
 section_rngs_n <-
   toc_sections %>%
-  filter_lists() %>%
+  subset_content() %>%
   count(year, section_label) %>%
-  left_join(
-    section_rngs
-  ) %>%
-  mutate(n_pages = page_num_end - page_num_start) %>%
+  left_join(section_rngs) %>%
+  mutate(n_pages = page_end - page_start) %>%
   mutate(list_pages_ratio = n / n_pages)
 section_rngs_n
 
+#+ section_rngs_n_1yr-1, include=F, eval=F, echo=F
 section_rngs_n_1yr <- section_rngs_n %>% filter(year == 2018)
 section_rngs_n_1yr
 
+#+ viz_section_rngs_n_1yr-1, include=F, eval=F, echo=F
 viz_section_rngs_n_1yr <-
   section_rngs_n_1yr %>%
   ggplot() +
@@ -356,7 +575,16 @@ viz_section_rngs_n_1yr <-
   )
 viz_section_rngs_n_1yr
 
-# lines ----
+#+ viz_section_rngs_n_1yr-2, include=F, eval=F, echo=F
+teproj::export_ext_png(
+  viz_section_rngs_n_1yr,
+  dir = .dir_viz,
+  units = "in",
+  height = 8,
+  width = 8
+)
+
+#+ lines-1, include=T, eval=T, echo=T
 lines <-
   body_pages %>%
   mutate(
@@ -373,6 +601,7 @@ lines <-
   mutate_at(vars(line), tolower)
 lines
 
+#+ lines-2, include=F, eval=F, echo=F
 # TODO:
 # + Add "sections", possibly corresponding to the first lineence afer each page line.
 # + Remove page lines.
@@ -389,18 +618,7 @@ lines
 # "II DAY-AHEAD MARKET PERFORMANCE" for the section header,
 # then "ERCOT's day-ahead ..." for the first lineence of the body.
 
-.head_reports <- function(data, ..., .n_rows = 30) {
-  opt_old <- getOption("tibble.print_max")
-  # options(tibble.print_min = .n_rows)
-  options(tibble.print_max = .n_rows)
-  on.exit(options(tibble.print_min = opt_old))
-  data %>%
-    group_by(year, ...) %>%
-    slice(c(1:10), .preserve = FALSE) %>%
-    ungroup()
-
-}
-
+#+ lines_aug-1, include=T, eval=T, echo=T
 lines_aug <-
   lines %>%
   mutate_at(vars(line), ~str_remove_all(., "\\/\\s+")) %>%
@@ -419,26 +637,14 @@ lines_aug <-
     )
     )
   )
-# lines_aug %>% count(year, line_type)
-# lines_aug %>% count(line_type)
-# lines_aug %>% .head_reports(idx_page)
+lines_aug
 
-# words ----
-paste_collapse <-
-  function(...,
-           start = "(",
-           end = ")",
-           collapse = paste0(end, "|", start),
-           sep = "") {
-    paste0(start, paste(..., collapse = collapse, sep = sep), end)
-  }
+#+ lines-2, include=F, eval=F, echo=F
+lines_aug %>% count(year, line_type)
+lines_aug %>% count(line_type)
+lines_aug %>% head_reports(idx_page)
 
-paste_collapse_loosely <- paste_collapse
-
-paste_collapse_strictly <- function(..., start = "(^", end = "$)") {
-  paste_collapse(..., start = start, end = end)
-}
-
+#+ rgx_months-1, include=F, eval=F, echo=F
 rgx_month_abbs <-
   month.abb %>%
   tolower() %>%
@@ -464,19 +670,18 @@ rgx_months <-
   paste_collapse(start = "", end = "", collapse = "|")
 rgx_months
 
+# TODO(?)
+# month_abbs2 <- c("m", "j", "j", "a", "s", "o", "n", "d")
+
+#+ rgx_zones-1, include=F, eval=F, echo=F
 zones <- c("houston", "north", "south", "west")
 rgx_zones <-
   zones %>%
-  # combinat::permn() %>%
   purrr::map_chr(~paste_collapse(., start = "", end = "", collapse = "\\s")) %>%
   paste_collapse_loosely()
 rgx_zones
 
-# TODO(?)
-# month_abbs2 <- c("m", "j", "j", "a", "s", "o", "n", "d")
-
-# stop_words <- tidytext::stop_words
-
+#+ words-1, include=T, eval=T, echo=T
 words <-
   lines_aug %>%
   tidytext::unnest_tokens(
@@ -490,13 +695,14 @@ words <-
       word_int = ~as.integer(.),
       word_num = ~as.numeric(.),
       word_month = ~dplyr::case_when(
-        # str_detect(., rgx_month_abbs) | str_detect(., rgx_month_names) ~ word,
         str_detect(., rgx_months) ~ word,
         TRUE ~ NA_character_
       )
     )
   )
 words
+
+#+ words-2, include=F, eval=F, echo=F
 # words %>%
 #   filter(!is.na(word_date))
 # words %>%
@@ -505,6 +711,11 @@ words
 # stop_words <- stopwords::data_stopwords_snowball["en"] %>% unlist() %>% tibble(word = .)
 stop_words <- tidytext::stop_words
 
+#+ words_aug-1, include=T, eval=T, echo=T
+.delim <- "QQ"
+delimitize <- function(x, delim = .delim) {
+  sprintf("%s%s%s", delim, x, delim)
+}
 words_aug <-
   words %>%
   # anti_join(stop_words) %>%
@@ -512,56 +723,50 @@ words_aug <-
   mutate_at(
     vars(word),
     list(~case_when(
-      !is.na(word_month) ~ "ZmonthZ",
-      word_int == year ~ "ZyearZ",
-      word_int == (year > 1) ~ "Zyearlead1Z",
-      word_int == (year < 1) ~ "Zyearlag1Z",
-      word_int == (year > 2) ~ "Zyearlead2Z",
-      word_int == (year < 2) ~ "Zyearlag2Z",
+      !is.na(word_month) ~ delimitize("month"),
+      word_int == year ~ delimitize("year"),
+      word_int == (year > 1) ~ delimitize("yearlead1"),
+      word_int == (year < 1) ~ delimitize("yearlag1"),
+      word_int == (year > 2) ~ delimitize("yearlead2"),
+      word_int == (year < 2) ~ delimitize("yearlag2"),
       # NOTE: Put some bounds on these to avoid capturing ALL integers.
-      word_int >= (year > 3) && . <= (year < 6) ~ "Zyeargtlead3Z",
-      word_int <= (year < 3) && . >= (year > 6) ~ "Zyearltlag3Z",
-      (word_int >= 1) & (word_int <= 31) ~ "ZmonthdayZ",
-      # isword_numinteger(word_num) && (word_num >= 1) && (word_num <= 31) ~ "ZdayZ",
-      (round(word_num / 1e1) * 1e1) == 0 ~ "Zlt10Z",
-      (round(word_num / 1e2) * 1e2) == 0 ~ "Z10ltxlt100Z",
-      (round(word_num / 1e3) * 1e3) == 0 ~ "Z100ltxlt1kZ",
-      (round(word_num / 1e6) * 1e6) == 0 ~ "Z1kltxlt1MZ",
-      (round(word_num / 1e9) * 1e9) == 0 ~ "Z1Mltxlt1BZ",
-      (round(word_num / 1e9) * 1e9) >= 0 ~ "Zxgt1BZ",
-      !is.na(word_num) ~ "ZxZ",
+      word_int >= (year > 3) && . <= (year < 6) ~ delimitize("yeargtlead3"),
+      word_int <= (year < 3) && . >= (year > 6) ~ delimitize("yearltlag3"),
+      # NOTE: This could either be a month or a day.
+      (word_int >= 1) & (word_int <= 31) ~ delimitize("monthday"),
+      (round(word_num / 1e1) * 1e1) == 0 ~ delimitize("xlt1"),
+      (round(word_num / 1e2) * 1e2) == 0 ~ delimitize("ltxlt100"),
+      (round(word_num / 1e3) * 1e3) == 0 ~ delimitize("100ltxlt1k"),
+      (round(word_num / 1e6) * 1e6) == 0 ~ delimitize("1kltxlt1M"),
+      (round(word_num / 1e9) * 1e9) == 0 ~ delimitize("1Mltxlt1B"),
+      (round(word_num / 1e9) * 1e9) >= 0 ~ delimitize("xgt1B"),
+      !is.na(word_num) ~ delimitize("x"),
       # NOTE: "a" can also be a month label (for April/August), but it's also prevalently
       # used as an adjective, so its problemmatic.
       # Maybe just leave this filtering for later?
-      # word %in% c("j", "f", "m", "s",  "o", "n", "d") ~ "ZmonthlabelZ",
-      # str_detect(., rgx_months) ~ "ZmonthZ",
-      # str_detect(., rgx_zones) ~ "ZzoneZ",
+      # word %in% c("j", "f", "m", "s",  "o", "n", "d") ~ "QQmonthlabelQQ",
+      # str_detect(., rgx_months) ~ "QQmonthQQ",
+      # str_detect(., rgx_zones) ~ "QQzoneQQ",
       TRUE ~ word
     )
     )
   )
 words_aug
 
-# TODO: Ternary plot with no stopwords?
-filter_tokens_generic_at <- function(data, col = "") {
-  col_quo <- sym(col)
-  data %>%
-    filter(!!col_quo %>% str_detect("^Z|Z$|\\sZ|Z\\s", negate = TRUE))
-}
-filter_words_generic <- function(..., col = "word") {
-  filter_tokens_generic_at(..., col = col)
-}
-
-
-# words_aug %>% filter(word == "ZmonthlabelZ")
-# lintes_redux ----
+# words_aug %>% filter(word == "QQmonthlabelQQ")
+#+ lintes_redux-1, include=T, eval=T, echo=T
 lines_redux <-
   words_aug %>%
   group_by(year, idx_page, idx_line, line_type) %>%
   summarise(line = paste(word, collapse = " ")) %>%
   ungroup()
 lines_redux
+
+#+ lintes_redux-2, include=F, eval=F, echo=F
 lines_redux %>% count(line_type)
+
+
+#+ lintes_redux-2, include=F, eval=F, echo=F
 
 # Debugging.
 # NOTE: These are single letter chart labels for months.
@@ -572,7 +777,7 @@ lines_redux %>% count(line_type)
 # lines_redux %>% filter(line %>% str_detect("houston north south west houston north south west")) -> z3
 # z3 %>% clipr::write_clip()
 
-# words_pmi ----
+#+ words_pmi-1, include=F, eval=F, echo=F
 # # Reference: https://juliasilge.com/blog/word-vectors-take-two/
 # slide_windows <- function(tbl, doc_var, window_size) {
 #   # each word gets a skipgram (window_size words) starting on the first
@@ -632,42 +837,30 @@ lines_redux %>% count(line_type)
 # ngram_vectors
 # # word_vectors %>% nearest_synonyms("west")
 
-# ngrams ----
-unnest_tokens_ngrams <- function(data, .n, ...) {
-  tidytext::unnest_tokens(
-    data,
-    output = ngram,
-    input = line,
-    to_lower = FALSE,
-    token = "ngrams",
-    n = .n,
-    ...
-  ) %>%
-    mutate(k = .n)
-}
-
+#+ ngrams-1, include=T, eval=T, echo=T
 ngrams <-
   bind_rows(
     # unnest_tokens_ngrams(lines_redux, 4),
     unnest_tokens_ngrams(lines_redux, 6),
     unnest_tokens_ngrams(lines_redux, 8),
-    unnest_tokens_ngrams(lines_redux, 10),
-    unnest_tokens_ngrams(lines_redux, 12)
+    unnest_tokens_ngrams(lines_redux, 10)
   )
-
 ngrams
 
+#+ ngram-2, include=F, eval=F, echo=F
 # ngrams %>% filter(line_type == "content") %>% filter(ngram %>% str_detect(zones_rgx, negate = FALSE))
 
+#+ ngrams_filt-1, include=T, eval=T, echo=T
 ngrams_filt <-
   ngrams %>%
   # filter(line_type == "content") %>%
   # NOTE: Filter out the marked ngrams.
-  filter(ngram %>% str_detect("^Z|Z$|\\sZ|Z\\s", negate = TRUE)) %>%
   # filter(ngram %>% str_detect("(houston\\snorth\\ssouth\\swest)", negate = TRUE))
-  filter(ngram %>% str_detect(rgx_zones, negate = TRUE))
+  filter(ngram %>% str_detect(rgx_zones, negate = TRUE)) %>%
+  drop_ngrams_generic()
 ngrams_filt
 
+#+ n_k_max-1, include=T, eval=T, echo=T
 n_k_max <-
   ngrams_filt %>%
   count(k) %>%
@@ -675,36 +868,44 @@ n_k_max <-
   pull(temp)
 n_k_max
 
-n_grams_filt_n <-
+#+ ngrams_filt_n-1, include=T, eval=T, echo=T
+ngrams_filt_n <-
   ngrams_filt %>%
   select(year, ngram, k) %>%
   add_count(k, name = "n_k") %>%
-  # mutate(n_k_factor = 1 + (max(n_k) - n_k) / (max(n_k) - 0)) %>%
   mutate(n_k_factor =  max(n_k) / n_k)
-n_grams_filt_n
-n_grams_filt_n %>% distinct(k, n_k_factor)
+ngrams_filt_n
 
+#+ ngrams_filt_n-2, include=F, eval=F, echo=F
+ngrams_filt_n %>% distinct(k, n_k_factor)
+
+#+ ngrams_tfidf-1, include=T, eval=T, echo=T
 ngrams_tfidf <-
   ngrams_filt %>%
   count(year, ngram) %>%
   tidytext::bind_tf_idf(term = ngram, document = year, n = n)
 ngrams_tfidf
 
+#+ ngrams_tfidf_aug-1, include=T, eval=T, echo=T
 # What were the most "unique" ngrams?
 # NOTE: Larger n-grams are more likely to have higher TFIDF, so need to account
 # for this by dividing by `n_k_factor`.
 ngrams_tfidf_aug <-
   ngrams_tfidf %>%
   left_join(
-    n_grams_filt_n %>% distinct()
+    ngrams_filt_n %>% distinct()
   ) %>%
   # distinct() %>%
   mutate(tf_idf_adj = tf_idf / n_k_factor) %>%
   arrange(desc(tf_idf))
 ngrams_tfidf_aug
+
+#+ ngrams_tfidf_aug-2, include=F, eval=F, echo=F
 # ngrams_tfidf_aug %>% arrange(desc(tf_idf_adj)) %>% mutate(rnk = row_number()) %>% filter(k == 6)
 
-# What were the most used exteneded ngrams.?(In this case, extended = ngram of 8 tokens.)
+#+ ngrams_tf_maxk-1, include=T, eval=T, echo=T
+# What were the most used exteneded ngrams.?
+# (In this case, "extended" = ngram of X tokens.)
 ngrams_tf_maxk <-
   ngrams_tfidf_aug %>%
   filter(k >= max(k)) %>%
@@ -714,6 +915,8 @@ ngrams_tf_maxk <-
   arrange(desc(tf))
 ngrams_tf_maxk
 
+#+ lines_tfidf-1, include=F, eval=F, echo=F
+# FIXME: Using this?
 # lines_tfidf <-
 #   lines_redux %>%
 #   count(year, line) %>%
@@ -732,6 +935,7 @@ ngrams_tf_maxk
 #   ungroup()
 # lines_tfidf_top
 
+#+ lines_redux_n-1, include=F, eval=F, echo=F
 # FIXME: Using this?
 # lines_redux_n <-
 #   lines_redux %>%
@@ -745,11 +949,14 @@ ngrams_tf_maxk
 #   filter(n > 1)
 # lines_redux_n1
 
+#+ words_n-1, include=T, eval=T, echo=F
 words_n <-
   words_aug %>%
   count(year, word, sort = TRUE)
 words_n
 
+#+ words_frac-1, include=T, eval=T, echo=F
+# "Manual" tfidf
 words_frac <-
   words_n %>%
   left_join(words_aug %>% group_by(year) %>% summarise(n_doc = n())) %>%
@@ -761,6 +968,8 @@ words_frac <-
   arrange(desc(word_frac_doc))
 words_frac
 
+
+#+ words_frac_filt-1, include=T, eval=T, echo=T
 words_frac_filt <-
   words_frac %>%
   # filter(n_word > 5) %>%
@@ -768,17 +977,36 @@ words_frac_filt <-
   arrange(desc(word_frac_total))
 words_frac_filt
 
+#+ words_tfidf-1, include=T, eval=T, echo=T
 words_tfidf <-
   words_n %>%
   tidytext::bind_tf_idf(word, year, n) %>%
   arrange(desc(tf_idf))
 words_tfidf
 
+#+ words_filt-1, include=T, eval=T, echo=T
 words_filt <-
   words_tfidf %>%
-  filter_words_generic() %>%
+  drop_words_generic() %>%
   anti_join(stop_words)
 words_filt
+
+#+ words_tern-1, include=F, eval=T, echo=F
+words_tern <-
+  words_filt %>%
+  select(year, word, tf) %>%
+  spread(year, tf)
+words_tern
+
+# words_tern_mark <-
+#   words_filt %>%
+#   mutate(.year = year, idx = row_number()) %>%
+#   select(.year, idx, year, word, tf) %>%
+#   spread(year, tf) %>%
+#   arrange(idx)
+# words_tern_mark
+
+#+ viz_words_tern-1, include=F, eval=T, echo=F
 # library("ggtern")
 arrws <- tibble(
   x = c(1, 0, 0),
@@ -788,19 +1016,6 @@ arrws <- tibble(
   yend = c(1, 0, 1),
   zend = c(1, 1, 0)
 )
-words_tern <-
-  words_filt %>%
-  select(year, word, tf) %>%
-  spread(year, tf)
-words_tern
-
-words_tern_mark <-
-  words_filt %>%
-  mutate(.year = year, idx = row_number()) %>%
-  select(.year, idx, year, word, tf) %>%
-  spread(year, tf) %>%
-  arrange(idx)
-words_tern_mark
 
 viz_words_tern <-
   words_tern %>%
@@ -826,6 +1041,7 @@ viz_words_tern <-
   ggtern::theme_classic()
 viz_words_tern
 
+#+ viz_tfidf-1, include=F, eval=F, echo=F
 # Reference: fig 3.4 at https://www.tidytextmining.com/tfidf.html#tfidf
 viz_tfidf <-
   words_tfidf %>%
