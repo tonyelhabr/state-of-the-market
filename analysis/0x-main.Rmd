@@ -1,22 +1,23 @@
-#' ---
-#' title: ""
-#' author: ""
-#' output:
-#'   html_document:
-#'     theme: cosmo
-#'     highlight: haddock
-#'     toc: true
-#'     toc_depth: 3
-#' ---
+---
+title: ""
+author: ""
+output:
+  html_document:
+    theme: cosmo
+    highlight: haddock
+    toc: true
+    toc_depth: 3
+---
 
-#+ postprocess, include=F, echo=F, cache=F
+```{r postprocess, include=F, echo=F, cache=F}
 .path_r <- path.expand(rstudioapi::getSourceEditorContext()$path)
 .path_sans_ext <- tools::file_path_sans_ext(.path_r)
 .path_rmd <- paste0(.path_sans_ext, ".Rmd")
 # rmarkdown::render(knitr::spin(.path_r, knit = FALSE))
 # spelling::spell_check_files(.path_rmd)
 
-#+ setup, include=F, cache=F
+```
+```{r setup, include=F, cache=F}
 knitr::opts_knit$set(root.dir = here::here())
 knitr::opts_chunk$set(
   # rows.print = 25,
@@ -42,7 +43,8 @@ knitr::opts_chunk$set(
 # options(tibble.width = Inf)
 # options(tibble.print_max = Inf)
 
-#+ pkg-import-1, include=F, echo=F
+```
+```{r pkg-import-1, include=F, echo=F}
 # library("tokenizers")
 # library("pdftools")
 # filter <- dplyr::filter
@@ -51,7 +53,8 @@ library("teplot")
 # library("awtools")
 filter <- dplyr::filter
 
-#+ functions-1, include=F
+```
+```{r functions-1, include=F}
 # "https://www.potomaceconomics.com/wp-content/uploads/2019/06/2018-State-of-the-Market-Report.pdf"
 # "https://www.potomaceconomics.com/wp-content/uploads/2018/05/2017-State-of-the-Market-Report.pdf"
 # "https://www.potomaceconomics.com/wp-content/uploads/2017/06/2016-ERCOT-State-of-the-Market-Report.pdf"
@@ -136,12 +139,11 @@ subset_content <- function(data) {
 }
 
 .dir_viz <- "analysis/figs"
-.export_viz <- TRUE
 theme_custom <- function(...) {
   teplot::theme_te(
     # base_family = "",
     base_family = "Arial Narrow",
-    base_size = 12,
+    base_size = 14,
     legend.title = element_text(face = "bold"),
     legend.position = "right"
   ) +
@@ -149,25 +151,24 @@ theme_custom <- function(...) {
     theme(
       # legend.key.height = unit(1.5, "cm"),
       # legend.spacing.y = unit(0.5, "cm"),
-      plot.caption = element_text(hjust = 1),
-      plot.title = element_text(size = 20),
-      plot.subtitle = element_text(size = 16),
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 12)
+      caption = element_text(hjust = 1),
+      plot.title = element_text(size = 22),
+      plot.subtitle = element_text(size = 18),
+      legend.title = element_text(size = 16),
+      legend.text = element_text(size = 16)
     )
 }
 
-# theme_custom <- function(...) {
-#   hrbrthemes::theme_ipsum(
-#     base_size = 12,
-#     plot_title_size = 20,
-#     subtitle_size = 16,
-#     plot_margin = ggplot2::margin(20, 20, 20, 20),
-#     strip_text_size = 14,
-#     caption_size = 12,
-#     caption_face = "plain"
-#   )
-# }
+theme_custom <- function(...) {
+  hrbrthemes::theme_ipsum(
+    base_size = 14,
+    plot_title_size = 22,
+    subtitle_size = 18,
+    plot_margin = ggplot2::margin(10, 10, 10, 10),
+    strip_text_size = 14,
+    caption_size = 12
+  )
+}
 
 ggplot2::theme_set(theme_custom())
 
@@ -243,22 +244,14 @@ unnest_tokens_ngrams <- function(data, .n, ...) {
 }
 
 
-#+ viz-vars-1, include=F, eval=F, echo=F
-.viz_footer <- "\n\nBy: Tony ElHabr.\nSource: https://www.potomaceconomics.com/markets-monitored/ercot/.\n"
-.viz_label_potamac <- "Potomac Economics' \"State of the Market\" Reports on ERCOT"
-.viz_label_content <- "figures and tables"
-.n_chr_title_wrap <- 90
-.n_chr_subtitle_wrap <- 120
-.n_chr_footer_wrap <- 120
-.units <- "in"
-.height_wide <- 6
-.width_wide <- 10
-.height_tall <- 10
-.width_tall <- 6
-.height <- 7
-.width <- 7
+```
+```{r viz-vars-1, include=F, eval=F, echo=F}
+viz_footer <- "\nBy: Tony ElHabr.\nData source: https://www.potomaceconomics.com/markets-monitored/ercot/.\n"
+viz_label_static_1 <- "Potomac Economics' \"State of the Market\" Reports on ERCOT"
+viz_label_static_2 <- "figures and tables"
 
-#+ download_report-1, include=T, eval=F, echo=T
+```
+```{r download_report-1, include=T, eval=F, echo=T}
 years <- 2016L:2018L
 # NOTE: `download_report` is a custom function.
 paths <-
@@ -266,7 +259,8 @@ paths <-
   purrr::map_chr(download_report)
 paths
 
-#+ paths-1, include=F, eval=T, echo=F
+```
+```{r paths-1, include=F, eval=T, echo=F}
 paths <-
   list.files(
     path = "data-raw",
@@ -275,7 +269,8 @@ paths <-
   )
 paths
 
-#+ paths_INFO-1, include=T, eval=T, echo=T
+```
+```{r paths_INFO-1, include=T, eval=T, echo=T}
 paths_info <-
   paths %>%
   tibble(path = .) %>%
@@ -285,7 +280,8 @@ paths_info <-
   select(year, path)
 paths_info
 
-#+ pages_nest-1, include=T, eval=T, echo=T
+```
+```{r pages_nest-1, include=T, eval=T, echo=T}
 pages_nest <-
   paths_info %>%
   mutate(
@@ -294,7 +290,8 @@ pages_nest <-
   select(-path)
 pages_nest
 
-#+ pages-1, include=T, eval=T, echo=T
+```
+```{r pages-1, include=T, eval=T, echo=T}
 pages <-
   pages_nest %>%
   unnest(page) %>%
@@ -303,14 +300,16 @@ pages <-
   ungroup()
 pages
 
-#+ pages_n-1, include=T, eval=T, echo=T
+```
+```{r pages_n-1, include=T, eval=T, echo=T}
 pages_n <-
   pages_nest %>%
   mutate(n_pages = purrr::map_int(page, ~length(.x))) %>%
   select(-page)
 pages_n
 
-#+ toc_pages-1, include=T, eval=T, echo=T
+```
+```{r toc_pages-1, include=T, eval=T, echo=T}
 # NOTE: These are the same across all reports.
 toc_page_start <- 3L
 toc_page_end <- 7L
@@ -319,13 +318,15 @@ toc_pages <-
   filter(idx_page >= 3L, idx_page <= (toc_page_end - 1))
 toc_pages
 
-#+ body_pages-1, include=T, eval=T, echo=T
+```
+```{r body_pages-1, include=T, eval=T, echo=T}
 body_pages <-
   pages %>%
   filter(idx_page >= toc_page_end)
 body_pages
 
-#+ body_rngs-1, include=F, eval=F, echo=F
+```
+```{r body_rngs-1, include=F, eval=F, echo=F}
 body_rngs <-
   body_pages %>%
   filter(page %>% str_detect("Executive Summary")) %>%
@@ -340,7 +341,8 @@ body_rngs <-
   select(year, page_start, page_end, n_pages)
 body_rngs
 
-#+ toc-1, include=T, eval=T, echo=T
+```
+```{r toc-1, include=T, eval=T, echo=T}
 toc <-
   toc_pages %>%
   unnest_pages() %>%
@@ -352,14 +354,16 @@ toc <-
   )
 toc
 
-#+ toc_ex-1, include=T, eval=T, echo=T
+```
+```{r toc_ex-1, include=T, eval=T, echo=T}
 toc_ex <-
   toc %>%
   filter(year == 2018) %>%
   filter(line %>% str_detect("review of real-time market outcomes| 1[:]"))
 toc_ex
 
-#+ toc_aug-1, include=T, eval=T, echo=T
+```
+```{r toc_aug-1, include=T, eval=T, echo=T}
 toc_aug <-
   toc %>%
   filter(line %>% str_detect("executive|contents|state\\sof\\sthe|list\\sof", negate = TRUE)) %>%
@@ -409,7 +413,8 @@ toc_aug <-
   select(-idx_page, -idx_line, -line)
 toc_aug
 
-#+ toc_aug_ex-1, include=T, eval=T, echo=T
+```
+```{r toc_aug_ex-1, include=T, eval=T, echo=T}
 toc_aug_ex <-
   toc_aug %>%
   filter(year == 2018) %>%
@@ -419,7 +424,8 @@ toc_aug_ex <-
   ungroup()
 toc_aug_ex
 
-#+ section_rngs-1, include=T, eval=T, echo=T
+```
+```{r section_rngs-1, include=T, eval=T, echo=T}
 section_rngs <-
   toc_aug %>%
   filter(line_type == "section") %>%
@@ -438,14 +444,17 @@ section_rngs <-
   select(year, page_start = page_num, page_end, section_label = label)
 section_rngs
 
-#+ section_rngs-2, include=F, eval=F, echo=F
+```
+```{r section_rngs-2, include=F, eval=F, echo=F}
 # ~~FIXME: `page_start` is not really correct! It needs to account for the TOC and Exective Summary.~~
 
-#+ section_label_lvls-1, include=F, eval=T, echo=F
+```
+```{r section_label_lvls-1, include=F, eval=T, echo=F}
 section_label_lvls <- section_rngs %>% pull(section_label) %>% levels()
 section_label_lvls
 
-#+ toc_sections-1, include=T, eval=T, echo=T
+```
+```{r toc_sections-1, include=T, eval=T, echo=T}
 toc_sections <-
   toc_aug %>%
   filter(line_type %in% c("subsection", "figure", "table")) %>%
@@ -462,7 +471,8 @@ toc_sections <-
   rename(year = year.x)
 toc_sections
 
-#+ toc_n-1, include=T, eval=T, echo=T
+```
+```{r toc_n-1, include=T, eval=T, echo=T}
 toc_n <-
   toc_sections %>%
   group_by(line_type, label) %>%
@@ -470,18 +480,22 @@ toc_n <-
   ungroup()
 toc_n
 
-#+ toc_n-2, include=F, eval=F, echo=F
+```
+```{r toc_n-2, include=F, eval=F, echo=F}
 toc_n %>% pull(section_label) %>% levels()
 
-#+ toc_content_n-1, include=F, eval=F, echo=F
+```
+```{r toc_content_n-1, include=F, eval=F, echo=F}
 toc_content_n <- toc_n %>% subset_content()
 toc_content_n
 
-#+ toc_n_1yr-1, include=F, eval=F, echo=F
+```
+```{r toc_n_1yr-1, include=F, eval=F, echo=F}
 toc_n_1yr <- toc_content_n %>%  filter(year == 2018)
 toc_n_1yr
 
-#+ toc_n_1yr_wfl-1, include=F, eval=F, echo=F
+```
+```{r toc_n_1yr_wfl-1, include=F, eval=F, echo=F}
 toc_n_1yr_wfl <-
   toc_n_1yr %>%
   mutate_at(vars(section_label), as.character) %>%
@@ -491,7 +505,8 @@ toc_n_1yr_wfl <-
   mutate_at(vars(section_label), ~factor(., section_label_lvls))
 toc_n_1yr_wfl
 
-#+ viz_toc_n_1yr-1, include=F, eval=F, echo=F
+```
+```{r viz_toc_n_1yr-1, include=F, eval=F, echo=F}
 viz_toc_n_1yr <-
   toc_n_1yr_wfl %>%
   ggplot() +
@@ -499,8 +514,7 @@ viz_toc_n_1yr <-
   ggwaffle::geom_waffle() +
   coord_equal() +
   scale_fill_section() +
-  ggplot2::theme(
-    # plot.caption = element_text(hjust = 0),
+  theme(
     # axis.text.y = element_blank(),
     # axis.text.x = element_blank(),
     panel.grid = element_blank()
@@ -508,30 +522,32 @@ viz_toc_n_1yr <-
   labs_xy_null() +
   labs(
     fill = "Section",
-    title = str_wrap(glue::glue("Composition of {.viz_label_potamac}"), .n_chr_footer_wrap),
+    title = str_wrap(glue::glue("Composition of {viz_label_static_1}"), 120),
     subtitle = str_wrap(
       glue::glue(
-        "Counts of {.viz_label_content} appearing in {.viz_label_potamac} in 2018."
-        ), .n_chr_title_wrap),
-    caption = .viz_footer
+        "Counts of {viz_label_static_2} appearing in {viz_label_static_1} in 2018."
+        ), 90),
+    caption = viz_footer
   )
 viz_toc_n_1yr
 
-#+ viz_toc_n_1yr-2, include=F, eval=F, echo=F
+```
+```{r viz_toc_n_1yr-2, include=F, eval=F, echo=F}
 teproj::export_ext_png(
   viz_toc_n_1yr,
-  export = .export_viz,
   dir = .dir_viz,
-  units = .units,
-  height = .height_wide,
-  width = .width_wide
+  units = "in",
+  height = 7,
+  width = 10
 )
 
-#+ toc_content_n1-1, include=F, eval=F, echo=F
+```
+```{r toc_content_n1-1, include=F, eval=F, echo=F}
 toc_content_n1 <- toc_content_n %>% filter(n == 1)
 toc_content_n1
 
-#+ viz_toc_content_n1-1, include=F, eval=F, echo=F
+```
+```{r viz_toc_content_n1-1, include=F, eval=F, echo=F}
 viz_toc_content_n1 <-
   toc_content_n1 %>%
   group_by(year) %>%
@@ -554,32 +570,33 @@ viz_toc_content_n1 <-
     subtitle = paste0(
       str_wrap(
         glue::glue(
-          "Counts of {.viz_label_content} appearing in only 1 of the 3 {.viz_label_potamac} between 2016 and 2018."
-          ), .n_chr_title_wrap)
+          "Counts of {viz_label_static_2} appearing in only 1 of the 3 {viz_label_static_1} between 2016 and 2018."
+          ), 90)
       ),
     caption = paste0(
       str_wrap(
         glue::glue(
           "Day-Ahead Market (DAM) Performance, Reliability Unit Commitments (RUCs),
           and Resource Adequacy received more attention in 2018 than in past years."
-        ), .n_chr_footer_wrap),
-      .viz_footer
+        ), 120),
+      "\n", viz_footer
     )
   ) +
   coord_flip()
 viz_toc_content_n1
 
-#+ viz_toc_content_n1-2, include=F, eval=F, echo=F
+```
+```{r viz_toc_content_n1-2, include=F, eval=F, echo=F}
 teproj::export_ext_png(
   viz_toc_content_n1,
-  export = .export_viz,
   dir = .dir_viz,
-  units = .units,
-  height = .height_wide,
-  width = .width_wide
+  units = "in",
+  height = 7,
+  width = 10
 )
 
-#+ section_rngs_n-1, include=F, eval=F, echo=F
+```
+```{r section_rngs_n-1, include=F, eval=F, echo=F}
 section_rngs_n <-
   toc_sections %>%
   subset_content() %>%
@@ -589,22 +606,23 @@ section_rngs_n <-
   mutate(list_pages_ratio = n / n_pages)
 section_rngs_n
 
-#+ section_rngs_n_1yr-1, include=F, eval=F, echo=F
+```
+```{r section_rngs_n_1yr-1, include=F, eval=F, echo=F}
 section_rngs_n_1yr <- section_rngs_n %>% filter(year == 2018)
 section_rngs_n_1yr
 
-#+ viz_section_rngs_n_1yr-1, include=F, eval=F, echo=F
+```
+```{r viz_section_rngs_n_1yr-1, include=F, eval=F, echo=F}
 viz_section_rngs_n_1yr <-
   section_rngs_n_1yr %>%
   ggplot() +
   aes(x = section_label, y = list_pages_ratio, fill = section_label) +
   geom_col() +
+  # scale_y_continuous(labels = scales::percent) +
   scale_fill_section() +
   theme(
-    # legend.position = "left",
-    plot.caption = element_text(hjust = 0),
     axis.text.x = element_blank(),
-    panel.grid.major.x = element_blank()
+    panel.grid.major.y = element_blank()
   ) +
   labs(
     x = NULL,
@@ -614,37 +632,49 @@ viz_section_rngs_n_1yr <-
     subtitle = paste0(
       str_wrap(
         glue::glue(
-          "Ratio of counts of {.viz_label_content} vs. number of pages per section in {.viz_label_potamac} in 2018."
-        ), .n_chr_title_wrap)
+          "Ratio of counts of {viz_label_static_2} vs. number of pages per section in {viz_label_static_1} in 2018."
+        ), 90)
     ),
     caption = paste0(
       str_wrap(
         glue::glue(
           "By coincidence (or not), the sections appearing earlier in the report have more plots and tables."
-        ), .n_chr_footer_wrap),
-      .viz_footer
+        ), 120),
+      "\n", viz_footer
     )
   )
 viz_section_rngs_n_1yr
 
-#+ viz_section_rngs_n_1yr-2, include=F, eval=F, echo=F
+```
+```{r viz_section_rngs_n_1yr-2, include=F, eval=F, echo=F}
 teproj::export_ext_png(
   viz_section_rngs_n_1yr,
-  export = .export_viz,
   dir = .dir_viz,
-  units = .units,
-  height = .height_wide,
-  width = .width_wide
+  units = "in",
+  height = 8,
+  width = 8
 )
 
-#+ lines-1, include=T, eval=T, echo=T
+```
+```{r lines-1, include=T, eval=T, echo=T}
 lines <-
   body_pages %>%
-  unnest_pages() %>%
+  mutate(
+    lines = purrr::map(page, ~{
+      .x %>%
+        str_split("\\n") %>%
+        purrr::map(str_squish) %>%
+        unlist() %>%
+        enframe(name = "idx_line", value = "line")
+    })
+  ) %>%
+  select(-page) %>%
+  unnest(lines) %>%
   mutate_at(vars(line), tolower)
 lines
 
-#+ lines-2, include=F, eval=F, echo=F
+```
+```{r lines-2, include=F, eval=F, echo=F}
 # TODO:
 # + Add "sections", possibly corresponding to the first lineence afer each page line.
 # + Remove page lines.
@@ -661,7 +691,8 @@ lines
 # "II DAY-AHEAD MARKET PERFORMANCE" for the section header,
 # then "ERCOT's day-ahead ..." for the first lineence of the body.
 
-#+ lines_aug-1, include=T, eval=T, echo=T
+```
+```{r lines_aug-1, include=T, eval=T, echo=T}
 lines_aug <-
   lines %>%
   mutate_at(vars(line), ~str_remove_all(., "\\/\\s+")) %>%
@@ -682,12 +713,14 @@ lines_aug <-
   )
 lines_aug
 
-#+ lines_aug-2, include=F, eval=F, echo=F
+```
+```{r lines_aug-2, include=F, eval=F, echo=F}
 lines_aug %>% count(year, line_type)
 lines_aug %>% count(line_type)
 lines_aug %>% head_reports(idx_page)
 
-#+ rgx_months-1, include=F, eval=F, echo=F
+```
+```{r rgx_months-1, include=F, eval=F, echo=F}
 rgx_month_abbs <-
   month.abb %>%
   tolower() %>%
@@ -716,7 +749,8 @@ rgx_months
 # TODO(?)
 # month_abbs2 <- c("m", "j", "j", "a", "s", "o", "n", "d")
 
-#+ rgx_zones-1, include=F, eval=F, echo=F
+```
+```{r rgx_zones-1, include=F, eval=F, echo=F}
 zones <- c("houston", "north", "south", "west")
 rgx_zones <-
   zones %>%
@@ -724,7 +758,8 @@ rgx_zones <-
   paste_collapse_loosely()
 rgx_zones
 
-#+ words-1, include=T, eval=T, echo=T
+```
+```{r words-1, include=T, eval=T, echo=T}
 words <-
   lines_aug %>%
   tidytext::unnest_tokens(
@@ -745,7 +780,8 @@ words <-
   )
 words
 
-#+ words-2, include=F, eval=F, echo=F
+```
+```{r words-2, include=F, eval=F, echo=F}
 # words %>%
 #   filter(!is.na(word_date))
 # words %>%
@@ -754,7 +790,8 @@ words
 # stop_words <- stopwords::data_stopwords_snowball["en"] %>% unlist() %>% tibble(word = .)
 stop_words <- tidytext::stop_words
 
-#+ words_aug-1, include=T, eval=T, echo=T
+```
+```{r words_aug-1, include=T, eval=T, echo=T}
 .delim <- "QQ"
 delimitize <- function(x, delim = .delim) {
   sprintf("%s%s%s", delim, x, delim)
@@ -796,14 +833,16 @@ words_aug <-
   )
 words_aug
 
-#+ words_filt-1, include=T, eval=T, echo=T
+```
+```{r words_filt-1, include=T, eval=T, echo=T}
 words_filt <-
   words_aug %>%
   drop_words_generic() %>%
   anti_join(stop_words)
 words_filt
 
-#+ lines_redux-1, include=T, eval=T, echo=T
+```
+```{r lines_redux-1, include=T, eval=T, echo=T}
 lines_redux <-
   words_aug %>%
   group_by(year, idx_page, idx_line, line_type) %>%
@@ -811,10 +850,12 @@ lines_redux <-
   ungroup()
 lines_redux
 
-#+ lines_redux-2, include=F, eval=F, echo=F
+```
+```{r lines_redux-2, include=F, eval=F, echo=F}
 lines_redux %>% count(line_type)
 
-#+ lines_redux_filt-1, include=T, eval=T, echo=T
+```
+```{r lines_redux_filt-1, include=T, eval=T, echo=T}
 lines_redux_filt <-
   words_filt %>%
   group_by(year, idx_page, idx_line, line_type) %>%
@@ -831,7 +872,8 @@ lines_redux
 # lines_redux %>% filter(line %>% str_detect("houston north south west houston north south west")) -> z3
 # z3 %>% clipr::write_clip()
 
-#+ words_pmi-1, include=F, eval=F, echo=F
+```
+```{r words_pmi-1, include=F, eval=F, echo=F}
 # # Reference: https://juliasilge.com/blog/word-vectors-take-two/
 # slide_windows <- function(tbl, doc_var, window_size) {
 #   # each word gets a skipgram (window_size words) starting on the first
@@ -891,7 +933,8 @@ lines_redux
 # ngram_vectors
 # # word_vectors %>% nearest_synonyms("west")
 
-#+ ngrams-1, include=T, eval=T, echo=T
+```
+```{r ngrams-1, include=T, eval=T, echo=T}
 ngrams <-
   bind_rows(
     # unnest_tokens_ngrams(lines_redux, 4),
@@ -901,10 +944,12 @@ ngrams <-
   )
 ngrams
 
-#+ ngram-2, include=F, eval=F, echo=F
+```
+```{r ngram-2, include=F, eval=F, echo=F}
 # ngrams %>% filter(line_type == "content") %>% filter(ngram %>% str_detect(zones_rgx, negate = FALSE))
 
-#+ ngrams_filt-1, include=T, eval=T, echo=T
+```
+```{r ngrams_filt-1, include=T, eval=T, echo=T}
 # NOTE: Although `drop_words_generic` (and `anti_join(stop_words)` were already called
 # in order to create `words_filt`, `drop_ngrams_generic()` should also be called here.
 ngrams_filt <-
@@ -912,7 +957,8 @@ ngrams_filt <-
   drop_ngrams_generic()
 ngrams_filt
 
-#+ n_k_max-1, include=T, eval=T, echo=T
+```
+```{r n_k_max-1, include=T, eval=T, echo=T}
 n_k_max <-
   # ngrams_filt %>%
   ngrams %>%
@@ -921,7 +967,8 @@ n_k_max <-
   pull(temp)
 n_k_max
 
-#+ ngrams_filt_n-1, include=T, eval=T, echo=T
+```
+```{r ngrams_filt_n-1, include=T, eval=T, echo=T}
 ngrams_filt_n <-
   ngrams_filt %>%
   select(year, ngram, k) %>%
@@ -929,17 +976,20 @@ ngrams_filt_n <-
   mutate(n_k_factor =  max(n_k) / n_k)
 ngrams_filt_n
 
-#+ ngrams_filt_n-2, include=F, eval=F, echo=F
+```
+```{r ngrams_filt_n-2, include=F, eval=F, echo=F}
 ngrams_filt_n %>% distinct(k, n_k_factor)
 
-#+ ngrams_tfidf-1, include=T, eval=T, echo=T
+```
+```{r ngrams_tfidf-1, include=T, eval=T, echo=T}
 ngrams_tfidf <-
   ngrams_filt %>%
   count(year, ngram) %>%
   tidytext::bind_tf_idf(term = ngram, document = year, n = n)
 ngrams_tfidf
 
-#+ ngrams_tfidf_aug-1, include=T, eval=T, echo=T
+```
+```{r ngrams_tfidf_aug-1, include=T, eval=T, echo=T}
 # NTOE: This attempt to answer the question "What were the most "unique" ngrams?"
 # NOTE: Larger n-grams are more likely to have higher TFIDF, so need to account
 # for this by dividing by `n_k_factor`.
@@ -953,7 +1003,8 @@ ngrams_tfidf_aug <-
   arrange(desc(tf_idf))
 ngrams_tfidf_aug
 
-#+ ngrams_tfidf_aug-2, include=F, eval=F, echo=F
+```
+```{r ngrams_tfidf_aug-2, include=F, eval=F, echo=F}
 set.seed(42)
 ngrams_tfidf_top_sample <-
   ngrams_tfidf_aug %>%
@@ -965,7 +1016,8 @@ ngrams_tfidf_top_sample <-
   arrange(year, n, k, ngram)
 ngrams_tfidf_top_sample
 
-#+ ngrams_tf_maxk-1, include=T, eval=T, echo=T
+```
+```{r ngrams_tf_maxk-1, include=T, eval=T, echo=T}
 # What were the most used exteneded ngrams.?
 # (In this case, "extended" = ngram of X tokens.)
 ngrams_tf_maxk <-
@@ -977,14 +1029,16 @@ ngrams_tf_maxk <-
   arrange(desc(tf))
 ngrams_tf_maxk
 
-#+ ngrams_tf_maxk_top-1, include=T, eval=T, echo=T
+```
+```{r ngrams_tf_maxk_top-1, include=T, eval=T, echo=T}
 ngrams_tf_maxk_top <-
   ngrams_tf_maxk %>%
   select(n, k, ngram) %>%
   filter(n == max(n))
 ngrams_tf_maxk_top
 
-#+ lines_tfidf-1, include=F, eval=F, echo=F
+```
+```{r lines_tfidf-1, include=F, eval=F, echo=F}
 # FIXME: Using this?
 # lines_tfidf <-
 #   lines_redux %>%
@@ -1004,7 +1058,8 @@ ngrams_tf_maxk_top
 #   ungroup()
 # lines_tfidf_top
 
-#+ lines_redux_n-1, include=F, eval=F, echo=F
+```
+```{r lines_redux_n-1, include=F, eval=F, echo=F}
 # FIXME: Using this?
 # lines_redux_n <-
 #   lines_redux %>%
@@ -1018,14 +1073,16 @@ ngrams_tf_maxk_top
 #   filter(n > 1)
 # lines_redux_n1
 
-#+ words_n-1, include=T, eval=T, echo=F
+```
+```{r words_n-1, include=T, eval=T, echo=F}
 words_n <-
   # words_aug %>%
   words_filt %>%
   count(year, word, sort = TRUE)
 words_n
 
-#+ words_frac-1, include=T, eval=T, echo=F
+```
+```{r words_frac-1, include=T, eval=T, echo=F}
 # NOTE: "Manual" tfidf
 # FIXME?: `words_aug` or `words_filt`?
 words_frac <-
@@ -1039,7 +1096,8 @@ words_frac <-
   arrange(desc(word_frac_doc))
 words_frac
 
-#+ words_frac_filt-1, include=T, eval=T, echo=T
+```
+```{r words_frac_filt-1, include=T, eval=T, echo=T}
 words_frac_filt <-
   words_frac %>%
   # filter(n_word > 5) %>%
@@ -1047,14 +1105,16 @@ words_frac_filt <-
   arrange(desc(word_frac_total))
 words_frac_filt
 
-#+ words_tfidf-1, include=T, eval=T, echo=T
+```
+```{r words_tfidf-1, include=T, eval=T, echo=T}
 words_tfidf <-
   words_n %>%
   tidytext::bind_tf_idf(word, year, n) %>%
   arrange(desc(tf_idf))
 words_tfidf
 
-#+ words_tern-1, include=F, eval=T, echo=F
+```
+```{r words_tern-1, include=F, eval=T, echo=F}
 words_tern <-
   words_tfidf %>%
   select(year, word, tf) %>%
@@ -1072,7 +1132,8 @@ words_tern
 #   arrange(idx)
 # words_tern_mark
 
-#+ viz_words_tern-1, include=F, eval=T, echo=F
+```
+```{r viz_words_tern-1, include=F, eval=T, echo=F}
 # Reference: https://d4tagirl.com/2018/01/does-the-twitter-ratio-apply-to-the-rstats-community
 # library("ggtern")
 arrws <- tibble(
@@ -1130,26 +1191,27 @@ viz_words_tern <-
   ggtern::theme_classic()
 viz_words_tern
 
-#+ viz_words_tern-2, include=F, eval=T, echo=F
+```
+```{r viz_words_tern-2, include=F, eval=T, echo=F}
 teproj::export_ext_png(
   viz_words_tern,
-  export = .export_viz,
   dir = .dir_viz,
-  units = .units,
-  height = .height,
-  width = .width
+  units = "in",
+  height = 7,
+  width = 10
 )
-# pacman::p_unload("ggtern")
-theme_set(theme_custom())
 
-#+ viz_words_tern-3, include=F, eval=F, echo=F
+
+```
+```{r viz_words_tern-3, include=F, eval=F, echo=F}
 # TODO: How to add labels?
 # UPDATE: It's giving me a lot of trouble (perhaps due to the package not
 # being updated in a while), so forget about it.
 viz_build <- ggplot_build(viz_words_tern)
 viz_build$data[[2]]$PANEL
 
-#+ viz_tfidf-1, include=F, eval=T, echo=F
+```
+```{r viz_tfidf-1, include=F, eval=T, echo=F}
 words_tfidf_filt <-
   words_tfidf %>%
   arrange(desc(tf_idf)) %>%
@@ -1162,7 +1224,8 @@ words_tfidf_filt <-
   ungroup()
 words_tfidf_filt
 
-#+ viz_tfidf_chatter-1, include=F, eval=F, echo=F
+```
+```{r viz_tfidf_chatter-1, include=F, eval=F, echo=F}
 # Reference: https://towardsdatascience.com/rip-wordclouds-long-live-chatterplots-e76a76896098
 viz_words_tfidf <-
   words_tfidf_filt %>%
@@ -1188,16 +1251,16 @@ viz_words_tfidf <-
       str_wrap(
         glue::glue(
           "Counts of top 10 most unique words (quantified by TFIDF) appearing in ",
-          "the {.viz_label_potamac} between 2016 and 2018."
-        ), .n_chr_title_wrap)
+          "the {viz_label_static_1} between 2016 and 2018."
+        ), 90)
     ),
     caption = paste0(
       str_wrap(
         glue::glue(
           "The most uniuqe words were those corresponding to regions (e.g. Denton in 2016) ",
           " and causes (e.g. Hurrican Harvey in 2017) of electric transmissoin congestion"
-        ), .n_chr_footer_wrap),
-      .viz_footer
+        ), 120),
+      "\n\n", viz_footer
     )
   ) +
   theme(
@@ -1206,13 +1269,15 @@ viz_words_tfidf <-
   )
 viz_words_tfidf
 
-#+ viz_words_tfidf-2, include=F, eval=T, echo=F
+
+```
+```{r viz_words_tfidf-2, include=F, eval=T, echo=F}
 teproj::export_ext_png(
   viz_words_tfidf,
-  export = .export_viz,
   dir = .dir_viz,
-  units = .units,
-  height = .height_wide,
-  width = .width_wide
+  units = "in",
+  height = 7,
+  width = 10
 )
+```
 
