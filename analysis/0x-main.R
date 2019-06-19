@@ -1,5 +1,5 @@
 #' ---
-#' title: "ISYE 6414: Homework 2 Peer Assessment Assignment"
+#' title: ""
 #' author: ""
 #' output:
 #'   html_document:
@@ -163,7 +163,7 @@ labs_xy_null <- function(...) {
   )
 }
 
-scale_fill_custom <- function() {
+scale_fill_section <- function() {
   ggthemes::scale_fill_tableau(labels = function(x) str_wrap(x, width = 30))
 }
 
@@ -450,7 +450,7 @@ viz_toc_n_1yr <-
   aes(x = x, y = y, fill = section_label) +
   ggwaffle::geom_waffle() +
   coord_equal() +
-  scale_fill_custom() +
+  scale_fill_section() +
   theme(
     # axis.text.y = element_blank(),
     # axis.text.x = element_blank(),
@@ -493,7 +493,7 @@ viz_toc_content_n1 <-
   # geom_text(aes(label = label, y = idx), color = "white") +
   guides(fill = FALSE) +
   # hrbrthemes::scale_fill_ipsum() +
-  scale_fill_custom() +
+  scale_fill_section() +
   theme(
     panel.grid.major.y = element_blank()
   ) +
@@ -549,7 +549,7 @@ viz_section_rngs_n_1yr <-
   aes(x = section_label, y = list_pages_ratio, fill = section_label) +
   geom_col() +
   # scale_y_continuous(labels = scales::percent) +
-  scale_fill_custom() +
+  scale_fill_section() +
   theme(
     axis.text.x = element_blank(),
     panel.grid.major.y = element_blank()
@@ -753,7 +753,13 @@ words_aug <-
   )
 words_aug
 
-# words_aug %>% filter(word == "QQmonthlabelQQ")
+#+ words_filt-1, include=T, eval=T, echo=T
+words_filt <-
+  words_aug %>%
+  drop_words_generic() %>%
+  anti_join(stop_words)
+words_filt
+
 #+ lintes_redux-1, include=T, eval=T, echo=T
 lines_redux <-
   words_aug %>%
@@ -765,8 +771,13 @@ lines_redux
 #+ lintes_redux-2, include=F, eval=F, echo=F
 lines_redux %>% count(line_type)
 
-
-#+ lintes_redux-2, include=F, eval=F, echo=F
+#+ lintes_redux-1, include=T, eval=T, echo=T
+lines_redux_filt <-
+  words_filt %>%
+  group_by(year, idx_page, idx_line, line_type) %>%
+  summarise(line = paste(word, collapse = " ")) %>%
+  ungroup()
+lines_redux
 
 # Debugging.
 # NOTE: These are single letter chart labels for months.
@@ -851,18 +862,17 @@ ngrams
 # ngrams %>% filter(line_type == "content") %>% filter(ngram %>% str_detect(zones_rgx, negate = FALSE))
 
 #+ ngrams_filt-1, include=T, eval=T, echo=T
+# NOTE: Although `drop_words_generic` (and `anti_join(stop_words)` were already called
+# in order to create `words_filt`, `drop_ngrams_generic()` should also be called here.
 ngrams_filt <-
   ngrams %>%
-  # filter(line_type == "content") %>%
-  # NOTE: Filter out the marked ngrams.
-  # filter(ngram %>% str_detect("(houston\\snorth\\ssouth\\swest)", negate = TRUE))
-  filter(ngram %>% str_detect(rgx_zones, negate = TRUE)) %>%
   drop_ngrams_generic()
 ngrams_filt
 
 #+ n_k_max-1, include=T, eval=T, echo=T
 n_k_max <-
-  ngrams_filt %>%
+  # ngrams_filt %>%
+  ngrams %>%
   count(k) %>%
   summarise(temp = max(n)) %>%
   pull(temp)
@@ -887,7 +897,7 @@ ngrams_tfidf <-
 ngrams_tfidf
 
 #+ ngrams_tfidf_aug-1, include=T, eval=T, echo=T
-# What were the most "unique" ngrams?
+# NTOE: This attempt to answer the question "What were the most "unique" ngrams?"
 # NOTE: Larger n-grams are more likely to have higher TFIDF, so need to account
 # for this by dividing by `n_k_factor`.
 ngrams_tfidf_aug <-
@@ -901,19 +911,35 @@ ngrams_tfidf_aug <-
 ngrams_tfidf_aug
 
 #+ ngrams_tfidf_aug-2, include=F, eval=F, echo=F
-# ngrams_tfidf_aug %>% arrange(desc(tf_idf_adj)) %>% mutate(rnk = row_number()) %>% filter(k == 6)
+set.seed(42)
+ngrams_tfidf_top_sample <-
+  ngrams_tfidf_aug %>%
+  group_by(year, k) %>%
+  top_n(3, wt = tf_idf_adj) %>%
+  sample_n(3, wt = tf_idf_adj) %>%
+  ungroup() %>%
+  select(year, n, k, ngram) %>%
+  arrange(year, n, k, ngram)
+ngrams_tfidf_top_sample
 
 #+ ngrams_tf_maxk-1, include=T, eval=T, echo=T
 # What were the most used exteneded ngrams.?
 # (In this case, "extended" = ngram of X tokens.)
 ngrams_tf_maxk <-
   ngrams_tfidf_aug %>%
-  filter(k >= max(k)) %>%
+  filter(k == max(k)) %>%
   group_by(k, ngram) %>%
   summarise(n = sum(n), tf = mean(n * tf)) %>%
   ungroup() %>%
   arrange(desc(tf))
 ngrams_tf_maxk
+
+#+ ngrams_tf_maxk_top-1, include=T, eval=T, echo=T
+ngrams_tf_maxk_top <-
+  ngrams_tf_maxk %>%
+  select(n, k, ngram) %>%
+  filter(n == max(n))
+ngrams_tf_maxk_top
 
 #+ lines_tfidf-1, include=F, eval=F, echo=F
 # FIXME: Using this?
@@ -951,23 +977,24 @@ ngrams_tf_maxk
 
 #+ words_n-1, include=T, eval=T, echo=F
 words_n <-
-  words_aug %>%
+  # words_aug %>%
+  words_filt %>%
   count(year, word, sort = TRUE)
 words_n
 
 #+ words_frac-1, include=T, eval=T, echo=F
-# "Manual" tfidf
+# NOTE: "Manual" tfidf
+# FIXME?: `words_aug` or `words_filt`?
 words_frac <-
   words_n %>%
-  left_join(words_aug %>% group_by(year) %>% summarise(n_doc = n())) %>%
-  left_join(words_aug %>% group_by(word) %>% summarise(n_word = n())) %>%
+  left_join(words_filt %>% group_by(year) %>% summarise(n_doc = n())) %>%
+  left_join(words_filt %>% group_by(word) %>% summarise(n_word = n())) %>%
   mutate(
     word_frac_doc = n / n_doc,
     word_frac_total = n / n_word
   ) %>%
   arrange(desc(word_frac_doc))
 words_frac
-
 
 #+ words_frac_filt-1, include=T, eval=T, echo=T
 words_frac_filt <-
@@ -984,18 +1011,14 @@ words_tfidf <-
   arrange(desc(tf_idf))
 words_tfidf
 
-#+ words_filt-1, include=T, eval=T, echo=T
-words_filt <-
-  words_tfidf %>%
-  drop_words_generic() %>%
-  anti_join(stop_words)
-words_filt
-
 #+ words_tern-1, include=F, eval=T, echo=F
 words_tern <-
-  words_filt %>%
+  words_tfidf %>%
   select(year, word, tf) %>%
-  spread(year, tf)
+  # group_by(year, word) %>%
+  # mutate(tf_max = max(tf, na.rm = TRUE)) %>%
+  # ungroup() %>%
+  spread(year, tf, fill = 0)
 words_tern
 
 # words_tern_mark <-
@@ -1007,6 +1030,7 @@ words_tern
 # words_tern_mark
 
 #+ viz_words_tern-1, include=F, eval=T, echo=F
+# Reference: https://d4tagirl.com/2018/01/does-the-twitter-ratio-apply-to-the-rstats-community
 # library("ggtern")
 arrws <- tibble(
   x = c(1, 0, 0),
@@ -1017,21 +1041,43 @@ arrws <- tibble(
   zend = c(1, 1, 0)
 )
 
+library("ggtern")
+# x  <- data.frame(
+#   A = c( 0.33, 0.4 ),
+#   B = c( 0.33, 0.5),
+#   C = c(0.33,0.1)
+# )
+# ggtern(data=x,aes(A,B,C)) +
+#   geom_path(color="green")+
+#   geom_point(type="l",shape=21,size=1) +
+#   geom_text(label=c("(1/3,1/3,1/3)","(2/5,1/2,1/10)"), color="red", hjust=0, vjust=-1)+
+#   theme_classic()
+
+# NOTE: Need to import `{ggtern}` for this to work. Also, it seems like the year
+# labels have to have tick marks (and not quotes). Otherwise, the following error
+# is received: "Error in rowSums(input[, ix.trl]) : 'x' must be numeric".
 viz_words_tern <-
   words_tern %>%
-  ggtern::ggtern() +
-  aes(x = `2016`, y = `2017`, z = `2018`) +
+  rename_at(vars(-word), ~paste0("Year ", .)) %>%
+  mutate(idx = row_number()) %>%
+  mutate(idx_rev = n() - idx + 1) %>%
+  mutate(lab = case_when(
+    idx <= 10 ~ word,
+    TRUE ~ NA_character_
+  )
+  ) %>%
+  # filter(idx <= 4) %>%
+  ggtern::ggtern(aes(x = `Year 2016`, y = `Year 2017`, z = `Year 2018`)) +
+  # ggtern::ggtern(aes(x = `y2016`, y = `y2017`, z = `y2018`)) +
+  geom_point() +
+  # geom_text(aes(label = lab)) +
   ggtern::geom_mask() +
   geom_segment(
     data = arrws,
     aes(x, y, z, xend = xend, yend = yend, zend = zend),
     color = "grey",
+    alpha = 0.2,
     size = 1
-  ) +
-  geom_point() +
-  geom_label(
-    data = words_tern %>% slice(c(1:10)),
-    aes(label = word)
   ) +
   theme(legend.position = "none") +
   # ggforce::geom_mark_circle(
@@ -1041,9 +1087,25 @@ viz_words_tern <-
   ggtern::theme_classic()
 viz_words_tern
 
-#+ viz_tfidf-1, include=F, eval=F, echo=F
-# Reference: fig 3.4 at https://www.tidytextmining.com/tfidf.html#tfidf
-viz_tfidf <-
+#+ viz_words_tern-2, include=F, eval=T, echo=F
+teproj::export_ext_png(
+  viz_words_tern,
+  dir = .dir_viz,
+  units = "in",
+  height = 7,
+  width = 10
+)
+
+
+#+ viz_words_tern-3, include=F, eval=F, echo=F
+# TODO: How to add labels?
+# UPDATE: It's giving me a lot of trouble (perhaps due to the package not
+# being updated in a while), so forget about it.
+viz_build <- ggplot_build(viz_words_tern)
+viz_build$data[[2]]$PANEL
+
+#+ viz_tfidf-1, include=F, eval=T, echo=F
+words_tfidf_filt <-
   words_tfidf %>%
   arrange(desc(tf_idf)) %>%
   mutate(
@@ -1051,18 +1113,65 @@ viz_tfidf <-
     word = word %>% factor(levels = rev(unique(word)))
   ) %>%
   group_by(year) %>%
-  top_n(6) %>%
-  ungroup() %>%
+  top_n(10, wt = tf_idf) %>%
+  ungroup()
+words_tfidf_filt
+
+#+ viz_tfidf_chatter-1, include=F, eval=F, echo=F
+# Reference: https://towardsdatascience.com/rip-wordclouds-long-live-chatterplots-e76a76896098
+scale_color_year <- function(...) {
+  ggthemes::scale_color_gdocs(...)
+}
+
+viz_words_tfidf <-
+  words_tfidf_filt %>%
   ggplot() +
-  aes(x = word, y = tf_idf, fill = year) +
-  # geom_col(show.legend = FALSE) +
-  geom_col() +
-  guides(fill = FALSE) +
-  facet_wrap(~year, scales = "free") +
-  labs(x = NULL, y = NULL) +
-  teplot::theme_te() +
-  theme(
-    axis.text.x = element_blank()
+  aes(x = year, y = n, color = year) +
+  ggrepel::geom_text_repel(
+    aes(label = word, size = n),
+    fontface = "bold",
+    box.padding = 0.75,
+    min.segment.length = Inf
   ) +
-  coord_flip()
-viz_tfidf
+  scale_color_year() +
+  scale_size_continuous(range = c(4, 8)) +
+  # guides(size = FALSE, color = guide_legend(override.aes = list(size = 5))) +
+  guides(size = FALSE, color = FALSE) +
+  # labs_xy_null() +
+  labs(
+    x = NULL,
+    y = "Count",
+    # color = "Year",
+    title = "Which words were the most unique in each report?",
+    subtitle = paste0(
+      str_wrap(
+        glue::glue(
+          "Counts of top 10 most unique words (quantified by TFIDF) appearing in ",
+          "the {viz_label_static_1} between 2016 and 2018."
+        ), 90)
+    ),
+    caption = paste0(
+      str_wrap(
+        glue::glue(
+          "The most uniuqe words were those corresponding to regions (e.g. Denton in 2016) ",
+          " and causes (e.g. Hurrican Harvey in 2017) of electric transmissoin congestion"
+        ), 120),
+      "\n\n", viz_footer
+    )
+  ) +
+  theme(
+    legend.position = "right",
+    panel.grid.major = element_blank()
+  )
+viz_words_tfidf
+
+
+#+ viz_words_tfidf-2, include=F, eval=T, echo=F
+teproj::export_ext_png(
+  viz_words_tfidf,
+  dir = .dir_viz,
+  units = "in",
+  height = 7,
+  width = 10
+)
+

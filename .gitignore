@@ -9,5 +9,5 @@ data-raw/
 **.rds
 **.rdb
 **.rdx
-**.png
+# **.png
 **.log
