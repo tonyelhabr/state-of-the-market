@@ -172,7 +172,7 @@ theme_sotmreport <- function(...) {
 
 # Reference: https://github.com/Ryo-N7/soccer_ggplots/blob/master/Copa%20America%202019/copa_america2019.rmd
 theme_sotmreport_dark <-
-  function(base_family = "Roboto Condensed",
+  function(base_family = "Arial Narrow",
            title.size = 24,
            subtitle.size = 14,
            caption.size = 14,
@@ -181,30 +181,30 @@ theme_sotmreport_dark <-
            axis.text.y.size = 12,
            axis.title.size = 16,
            strip.text.size = 18,
-           panel.grid.major.x = element_line(size = 0.5, color = "white"),
-           panel.grid.major.y = element_line(size = 0.5, color = "white"),
+           color_bkgrd = "grey90",
+           color_grid = ifelse(color_bkgrd == "black", "white", "black"),
+           color_text = color_grid,
+           color_title = color_text,
+           panel.grid.major.x = element_line(size = 0.5, color = color_grid),
+           panel.grid.major.y = element_line(size = 0.5, color = color_grid),
            panel.grid.minor.x = element_blank(),
            panel.grid.minor.y = element_blank(),
-           axis.ticks = element_line(color = "white"),
+           axis.ticks = element_line(color = color_grid),
            ...) {
-    ## Theme:
-    theme(text = element_text(family = base_family, color = "white"),
+    theme(text = element_text(family = base_family, color = color_text),
           plot.title = element_text(
             family = base_family,
             face = "bold",
             size = title.size,
-            # color = "white"
-            color = "grey90"
+            color = color_text
           ),
           plot.subtitle = element_text(size = subtitle.size),
           plot.caption = element_text(size = caption.size),
-          # panel.background = element_rect(fill = "black"),
-          # plot.background = element_rect(fill = "black"),
-          panel.background = element_rect(fill = "black"),
-          plot.background = element_rect(fill = "black"),
-          axis.text = element_text(size = axis.text.size, color = "white"),
-          axis.text.x = element_text(size = axis.text.x.size, color = "white"),
-          axis.text.y = element_text(size = axis.text.y.size, color = "white"),
+          panel.background = element_rect(fill = color_bkgrd),
+          plot.background = element_rect(fill = color_bkgrd),
+          axis.text = element_text(size = axis.text.size, color = color_text),
+          axis.text.x = element_text(size = axis.text.x.size, color = color_text),
+          axis.text.y = element_text(size = axis.text.y.size, color = color_text),
           axis.title = element_text(size = axis.title.size),
           axis.line.x = element_blank(),
           axis.line.y = element_blank(),
@@ -223,7 +223,7 @@ theme_sotmreport_dark <-
     )
   }
 
-ggplot2::theme_set(theme_sotmreport())
+# ggplot2::theme_set(theme_sotmreport())
 
 labs_xy_null <- function(...) {
   labs(
@@ -233,8 +233,17 @@ labs_xy_null <- function(...) {
   )
 }
 
-scale_fill_section <- function() {
-  ggthemes::scale_fill_tableau(labels = function(x) str_wrap(x, width = 30))
+.width_section_label <- 30
+scale_fill_section <- function(..., width = .width_section_label) {
+  f <- ggthemes::scale_fill_tableau
+  # f <- ggthemes::scale_fill_solarized
+  f(labels = function(x) str_wrap(x, width = width), ...)
+}
+
+scale_color_section <- function(..., width = .width_section_label) {
+  f <- ggthemes::scale_color_tableau
+  # f <- ggthemes::scale_color_solarized
+  f(labels = function(x) str_wrap(x, width = width), ...)
 }
 
 scale_color_year <- function(...) {
@@ -268,6 +277,7 @@ paste_collapse_strictly <- function(..., start = "(^", end = "$)") {
 }
 
 .delim <- "QQ"
+
 drop_tokens_generic_at <- function(data, col = "", delim = .delim) {
   col_quo <- sym(col)
   rgx <- sprintf("^%s|%s$|\\s%s|%s\\s", delim, delim, delim, delim)
@@ -283,6 +293,19 @@ drop_ngrams_generic <- function(..., col = "ngram") {
   drop_tokens_generic_at(..., col = col)
 }
 
+recreate_lines_from_words <- function(data) {
+  data %>%
+    group_by(year, page_num, idx_line, line_type, section_label) %>%
+    summarise(line = paste(word, collapse = " ")) %>%
+    ungroup() %>%
+    # NOTE: `idx_line = 1` is almost always the page header (which is redundant with the `section_label`.)
+    filter(idx_line > 1)
+}
+
+delimitize <- function(x, delim = .delim) {
+  sprintf("%s%s%s", delim, x, delim)
+}
+
 unnest_tokens_ngrams <- function(data, .n, ...) {
   tidytext::unnest_tokens(
     data,
@@ -296,7 +319,33 @@ unnest_tokens_ngrams <- function(data, .n, ...) {
     mutate(k = .n)
 }
 
+# add_idx_section_col <- function(data) {
+#   data %>%
+#     mutate(idx_section = section_label %>% str_replace("^([1-7])\\.(.*$)", "\\1") %>% as.integer())
+# }
 
+
+# Reference: https://github.com/dgrtwo/data-screencasts/blob/master/bird-collisions.Rmd
+geom_mean <- function(x) {
+  exp(mean(log(x + 1)) - 1)
+}
+
+averagize_at <-
+  function(data,
+           col,
+           ...,
+           sep = "_",
+           suffix = "avg",
+           col_new = paste0(col, sep, suffix)) {
+    col_sym <- sym(col)
+    col_new_sym <- sym(col_new)
+    data %>%
+      # summarise(!!col_new_sym := geom_mean(!!col_sym))
+      # summarise(!!col_new_sym := exp(mean(log(!!col_sym + 1)) - 1))
+      summarise(!!col_new_sym := mean(!!col_sym))
+  }
+
+# functions-end ----
 #+ viz-vars-1, include=F, eval=F, echo=F
 .viz_footer <- "\n\nBy: Tony ElHabr.\nSource: https://www.potomaceconomics.com/markets-monitored/ercot/.\n"
 .viz_label_potamac <- "Potomac Economics' \"State of the Market\" Reports on ERCOT"
@@ -379,6 +428,7 @@ body_pages <-
 body_pages
 
 #+ body_rngs-1, include=F, eval=F, echo=F
+# NOTE: Not currently using this! (Maybe can for augmenting `lines_aug`?)
 body_rngs <-
   body_pages %>%
   filter(page %>% str_detect("Executive Summary")) %>%
@@ -549,15 +599,16 @@ viz_toc_n_1yr <-
   toc_n_1yr_wfl %>%
   ggplot() +
   aes(x = x, y = y, fill = section_label) +
-  ggwaffle::geom_waffle() +
+  ggwaffle::geom_waffle(color = "black", size = 0.5) +
   coord_equal() +
   scale_fill_section() +
   theme_sotmreport_dark() +
   theme(
-    # plot.caption = element_text(hjust = 0),
     # axis.text.y = element_blank(),
     # axis.text.x = element_blank(),
-    panel.grid = element_blank()
+    # strip.background.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank()
   ) +
   labs_xy_null() +
   labs(
@@ -572,6 +623,7 @@ viz_toc_n_1yr <-
 viz_toc_n_1yr
 
 #+ viz_toc_n_1yr-2, include=F, eval=F, echo=F
+# viz_toc_n_1yr ----
 teproj::export_ext_png(
   viz_toc_n_1yr,
   export = .export_viz,
@@ -594,7 +646,7 @@ viz_toc_content_n1 <-
   ggplot() +
   aes(x = year, y = n, fill = section_label) +
   geom_col(color = "white") +
-  # geom_text(aes(label = label, y = idx), color = "white") +
+  # geom_text(aes(label = section_label, y = max(idx) + 1), color = "black") +
   guides(fill = FALSE) +
   scale_fill_section() +
   theme_sotmreport_dark() +
@@ -624,6 +676,7 @@ viz_toc_content_n1 <-
 viz_toc_content_n1
 
 #+ viz_toc_content_n1-2, include=F, eval=F, echo=F
+# viz_toc_content_n1 ----
 teproj::export_ext_png(
   viz_toc_content_n1,
   export = .export_viz,
@@ -664,19 +717,24 @@ viz_section_rngs_n_1yr <-
   # theme_sotmreport_dark() +
   labs(
     x = NULL,
-    y = "Ratio",
+    y = glue::glue("Ratio of {.viz_label_content} per page (per section)"),
     fill = "Section",
-    title = "Which Sections Have a Disproportionate Number of Figures And Tables?",
+    title = str_wrap(
+      "By coincidence (or not), the sections appearing earlier in the reports have more plots and tables.",
+      .n_chr_title_wrap
+    ),
+    # title = "Which Sections Have a Disproportionate Number of Figures And Tables?",
     subtitle = paste0(
       str_wrap(
-        glue::glue(
-          "Ratio of counts of {.viz_label_content} vs. number of pages per section in {.viz_label_potamac} in 2018."
+        paste0(
+          "A higher count of {.viz_label_content} per page (per section) in {.viz_label_potamac} in 2018",
+          "is an indicator that these sections have a d"
         ), .n_chr_title_wrap)
     ),
     caption = paste0(
       str_wrap(
         glue::glue(
-          "By coincidence (or not), the sections appearing earlier in the report have more plots and tables."
+
         ), .n_chr_footer_wrap),
       .viz_footer
     )
@@ -743,6 +801,29 @@ lines_aug %>% count(year, line_type)
 lines_aug %>% count(line_type)
 lines_aug %>% head_reports(idx_page)
 
+#+ lines_sections-1, include=T, eval=T, echo=T
+lines_sections <-
+  lines_aug %>%
+  inner_join(body_rngs) %>%
+  # NOTE: Get rid of the executive summary section.
+  filter(idx_page >= page_start) %>%
+  group_by(year) %>%
+  mutate(page_num = idx_page - min(idx_page) + 1) %>%
+  ungroup() %>%
+  select(year, page_num, idx_line, line_type, line) %>%
+  fuzzyjoin::fuzzy_left_join(
+    section_rngs,
+    by = c(
+      "year" = "year",
+      "page_num" = "page_start",
+      "page_num" = "page_end"
+    ),
+    match_fun = list(`==`, `>=`, `<=`)
+  ) %>%
+  select(-matches("[.]y|page_[se]")) %>%
+  rename(year = year.x)
+lines_sections
+
 #+ rgx_months-1, include=F, eval=F, echo=F
 rgx_month_abbs <-
   month.abb %>%
@@ -782,7 +863,7 @@ rgx_zones
 
 #+ words-1, include=T, eval=T, echo=T
 words <-
-  lines_aug %>%
+  lines_sections %>%
   tidytext::unnest_tokens(
     output = word,
     input = line
@@ -811,10 +892,7 @@ words
 stop_words <- tidytext::stop_words
 
 #+ words_aug-1, include=T, eval=T, echo=T
-.delim <- "QQ"
-delimitize <- function(x, delim = .delim) {
-  sprintf("%s%s%s", delim, x, delim)
-}
+
 words_aug <-
   words %>%
   # anti_join(stop_words) %>%
@@ -862,9 +940,7 @@ words_filt
 #+ lines_redux-1, include=T, eval=T, echo=T
 lines_redux <-
   words_aug %>%
-  group_by(year, idx_page, idx_line, line_type) %>%
-  summarise(line = paste(word, collapse = " ")) %>%
-  ungroup()
+  recreate_lines_from_word()
 lines_redux
 
 #+ lines_redux-2, include=F, eval=F, echo=F
@@ -873,10 +949,8 @@ lines_redux %>% count(line_type)
 #+ lines_redux_filt-1, include=T, eval=T, echo=T
 lines_redux_filt <-
   words_filt %>%
-  group_by(year, idx_page, idx_line, line_type) %>%
-  summarise(line = paste(word, collapse = " ")) %>%
-  ungroup()
-lines_redux
+  recreate_lines_from_words()
+lines_redux_filt
 
 # Debugging.
 # NOTE: These are single letter chart labels for months.
@@ -887,70 +961,9 @@ lines_redux
 # lines_redux %>% filter(line %>% str_detect("houston north south west houston north south west")) -> z3
 # z3 %>% clipr::write_clip()
 
-#+ words_pmi-1, include=F, eval=F, echo=F
-# # Reference: https://juliasilge.com/blog/word-vectors-take-two/
-# slide_windows <- function(tbl, doc_var, window_size) {
-#   # each word gets a skipgram (window_size words) starting on the first
-#   # e.g. skipgram 1 starts on word 1, skipgram 2 starts on word 2
-#
-#   each_total <- tbl %>%
-#     group_by(!!doc_var) %>%
-#     mutate(doc_total = n(),
-#            each_total = pmin(doc_total, window_size, na.rm = TRUE)) %>%
-#     pull(each_total)
-#
-#   rle_each <- rle(each_total)
-#   counts <- rle_each[["lengths"]]
-#   counts[rle_each$values != window_size] <- 1
-#
-#   # each word get a skipgram window, starting on the first
-#   # account for documents shorter than window
-#   id_counts <- rep(rle_each$values, counts)
-#   window_id <- rep(seq_along(id_counts), id_counts)
-#
-#
-#   # within each skipgram, there are window_size many offsets
-#   indexer <- (seq_along(rle_each[["values"]]) - 1) %>%
-#     purrr::map2(rle_each[["values"]] - 1,
-#                 ~ seq.int(.x, .x + .y)) %>%
-#     purrr::map2(counts, ~ rep(.x, .y)) %>%
-#     flatten_int() +
-#     window_id
-#
-#   tbl[indexer, ] %>%
-#     bind_cols(data_frame(window_id)) %>%
-#     group_by(window_id) %>%
-#     filter(n_distinct(!!doc_var) == 1) %>%
-#     ungroup
-# }
-#
-# nearest_synonyms <- function(df, token) {
-#   df %>%
-#     widyr::widely(~ . %*% (.[token, ]), sort = TRUE)(item1, dimension, value) %>%
-#     select(-item2)
-# }
-#
-# words_pmi <-
-#   lines_redux %>%
-#   tidytext::unnest_tokens(output = word, input = line) %>%
-#   add_count(word) %>%
-#   filter(n >= 20) %>%
-#   select(-n) %>%
-#   slide_windows(rlang::quo(idx_line), 4) %>%
-#   widyr::pairwise_pmi(word, window_id)
-# words_pmi
-# words_pmi %>% arrange(desc(pmi))
-#
-# word_vectors <-
-#   words_pmi %>%
-#   widyr::widely_svd(item1, item2, pmi, nv = 256, maxit = 1000)
-# ngram_vectors
-# # word_vectors %>% nearest_synonyms("west")
-
 #+ ngrams-1, include=T, eval=T, echo=T
 ngrams <-
   bind_rows(
-    # unnest_tokens_ngrams(lines_redux, 4),
     unnest_tokens_ngrams(lines_redux, 6),
     unnest_tokens_ngrams(lines_redux, 8),
     unnest_tokens_ngrams(lines_redux, 10)
@@ -1040,39 +1053,6 @@ ngrams_tf_maxk_top <-
   filter(n == max(n))
 ngrams_tf_maxk_top
 
-#+ lines_tfidf-1, include=F, eval=F, echo=F
-# FIXME: Using this?
-# lines_tfidf <-
-#   lines_redux %>%
-#   count(year, line) %>%
-#   # mutate(n = 1) %>%
-#   tidytext::bind_tf_idf(line, year, n) %>%
-#   arrange(desc(tf_idf))
-# lines_tfidf
-#
-# n_top <- 10
-# lines_tfidf_top <-
-#   lines_tfidf %>%
-#   group_by(year) %>%
-#   arrange(desc(tf_idf), .by_group = TRUE) %>%
-#   filter(line %>% str_detect("\\[|admin", negate = TRUE)) %>%
-#   slice(c(1:n_top)) %>%
-#   ungroup()
-# lines_tfidf_top
-
-#+ lines_redux_n-1, include=F, eval=F, echo=F
-# FIXME: Using this?
-# lines_redux_n <-
-#   lines_redux %>%
-#   count(line_type, line, sort = TRUE) %>%
-#   # filter(!(line_type %in% c("page_footer", "section_alphanumeric_label"))) %>%
-#   filter(line_type == "content")
-# lines_redux_n
-
-# lines_redux_n1 <-
-#   lines_redux_n %>%
-#   filter(n > 1)
-# lines_redux_n1
 
 #+ words_n-1, include=T, eval=T, echo=F
 words_n <-
@@ -1110,6 +1090,102 @@ words_tfidf <-
   arrange(desc(tf_idf))
 words_tfidf
 
+#+ words_section_tfidf-1, include=T, eval=T, echo=T
+words_section_n <-
+  words %>%
+  count(year, word, section_label, sort = TRUE)
+words_section_n
+
+words_section_tfidf <-
+  words_section_n %>%
+  # filter(year == 2018) %>%
+  tidytext::bind_tf_idf(word, section_label, n) %>%
+  arrange(desc(tf_idf))
+words_section_tfidf
+
+words_section_tfidf_filt <-
+  words_section_tfidf %>%
+  filter(n > 2) %>%
+  filter(tf_idf > 0)
+words_section_tfidf_filt
+
+words_section_tfidf_summ <-
+  words_section_tfidf_filt %>%
+  group_by(section_label) %>%
+  averagize_at("tf_idf") %>%
+  ungroup() %>%
+  arrange(desc(tf_idf_avg))
+words_section_tfidf_summ
+
+# bookmark ----
+viz_words_section_tfidf <-
+  words_section_tfidf_filt %>%
+  mutate(x = dplyr::if_else(tf_idf > 0.001, 0.001, tf_idf)) %>%
+  # mutate(x_inv = 1 / x) %>%
+  # count(x < tf_idf) %>%
+  ggplot() +
+  aes(
+    y = section_label,
+    x = x,
+    # size = x,
+    alpha = x,
+    group = section_label,
+    color = section_label,
+  ) +
+  scale_alpha_continuous(range = c(0.2, 1)) +
+  scale_size_continuous(range = c(0.5, 6)) +
+  # geom_jitter() +
+  ggbeeswarm::geom_quasirandom(
+   # alpha = 0.2,
+    groupOnX = FALSE
+  ) +
+  guides(
+    size = FALSE,
+    alpha = FALSE,
+    color = guide_legend(override.aes = list(size = 5))
+  ) +
+  # guides(color = guide_legend(nrow = 4)) +
+  scale_color_section() +
+  theme_sotmreport_dark() +
+  scale_x_continuous(limits = c(0, 0.00101), labels = scales::scientific_format(digits = 2)) +
+  # lims(x = c(0, 0.005)) +
+  theme(
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.position = "right",
+    plot.caption = element_text(hjust = 0)
+  ) +
+  labs(
+    color = "Section",
+    title = str_wrap("Which section is the most \"unique\" relative to the others?", .n_chr_title_wrap),
+    subtitle = str_wrap(
+      glue::glue(
+        "TFIDF of words in {.viz_label_potamac}."
+      ), .n_chr_title_wrap),
+    caption = .viz_footer,
+    x = "TFIDF",
+    y = NULL
+  )
+viz_words_section_tfidf
+
+
+#+ words_section_tfidf-2, include=F, eval=T, echo=T
+# words_section_tfidf_viz %>%
+#   filter(idx_section > 10, idx_section < 900) %>%
+#   lm(formula(log10(tf) ~ log10(idx_section)), data = .)
+words_section_tfidf_viz %>%
+  ggplot() +
+  aes(x = section_label, y = y, group = section_label, color = section_label) +
+  scale_x_log10() +
+  scale_y_log10() +
+  # geom_jitter(alpha = 0.1) +
+  geom_line(size = 1) +
+  # geom_smooth(size = 1.5, method = "lm", se = FALSE) +
+  # geom_smooth(size = 1.5, se = FALSE) +
+  scale_color_section() +
+  # facet_wrap(~section_label, scales = "free") +
+  theme_sotmreport()
 
 #+ viz_tfidf-1, include=F, eval=T, echo=F
 words_tfidf_filt <-
@@ -1193,14 +1269,6 @@ words_tern <-
   spread(year, tf, fill = 0)
 words_tern
 
-# words_tern_mark <-
-#   words_filt %>%
-#   mutate(.year = year, idx = row_number()) %>%
-#   select(.year, idx, year, word, tf) %>%
-#   spread(year, tf) %>%
-#   arrange(idx)
-# words_tern_mark
-
 #+ viz_words_tern-1, include=F, eval=T, echo=F
 # Reference: https://d4tagirl.com/2018/01/does-the-twitter-ratio-apply-to-the-rstats-community
 # library("ggtern")
@@ -1212,19 +1280,6 @@ arrws <- tibble(
   yend = c(1, 0, 1),
   zend = c(1, 1, 0)
 )
-
-# library("ggtern")
-# pacman::p_unload("ggtern")
-# x  <- data.frame(
-#   A = c( 0.33, 0.4 ),
-#   B = c( 0.33, 0.5),
-#   C = c(0.33,0.1)
-# )
-# ggtern(data=x,aes(A,B,C)) +
-#   geom_path(color="green")+
-#   geom_point(type="l",shape=21,size=1) +
-#   geom_text(label=c("(1/3,1/3,1/3)","(2/5,1/2,1/10)"), color="red", hjust=0, vjust=-1)+
-#   theme_classic()
 
 # NOTE: Need to import `{ggtern}` for this to work. Also, it seems like the year
 # labels have to have tick marks (and not quotes). Otherwise, the following error
