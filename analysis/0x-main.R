@@ -46,6 +46,7 @@ knitr::opts_chunk$set(
 # library("tokenizers")
 # library("pdftools")
 # filter <- dplyr::filter
+# library("ggtern")
 library("tidyverse")
 library("teplot")
 # library("awtools")
@@ -65,7 +66,7 @@ is_likeinteger <-
     TRUE
   }
 
-download_report <- function(year, destfile = NULL, dir = "data-raw", quiet = TRUE, ...) {
+download_sotmreport <- function(year, destfile = NULL, dir = "data-raw", quiet = TRUE, ...) {
   stopifnot(length(year) == 1, year >= 2016, year <= 2018)
   stopifnot(is_likeinteger(year))
   year_lead1 <- year + 1
@@ -137,7 +138,7 @@ subset_content <- function(data) {
 
 .dir_viz <- "analysis/figs"
 .export_viz <- TRUE
-theme_custom <- function(...) {
+theme_sotmreport <- function(...) {
   teplot::theme_te(
     # base_family = "",
     base_family = "Arial Narrow",
@@ -150,14 +151,14 @@ theme_custom <- function(...) {
       # legend.key.height = unit(1.5, "cm"),
       # legend.spacing.y = unit(0.5, "cm"),
       plot.caption = element_text(hjust = 1),
-      plot.title = element_text(size = 20),
+      plot.title = element_text(size = 24),
       plot.subtitle = element_text(size = 16),
       legend.title = element_text(size = 12),
       legend.text = element_text(size = 12)
     )
 }
 
-# theme_custom <- function(...) {
+# theme_sotmreport <- function(...) {
 #   hrbrthemes::theme_ipsum(
 #     base_size = 12,
 #     plot_title_size = 20,
@@ -169,7 +170,60 @@ theme_custom <- function(...) {
 #   )
 # }
 
-ggplot2::theme_set(theme_custom())
+# Reference: https://github.com/Ryo-N7/soccer_ggplots/blob/master/Copa%20America%202019/copa_america2019.rmd
+theme_sotmreport_dark <-
+  function(base_family = "Roboto Condensed",
+           title.size = 24,
+           subtitle.size = 14,
+           caption.size = 14,
+           axis.text.size = 14,
+           axis.text.x.size = 12,
+           axis.text.y.size = 12,
+           axis.title.size = 16,
+           strip.text.size = 18,
+           panel.grid.major.x = element_line(size = 0.5, color = "white"),
+           panel.grid.major.y = element_line(size = 0.5, color = "white"),
+           panel.grid.minor.x = element_blank(),
+           panel.grid.minor.y = element_blank(),
+           axis.ticks = element_line(color = "white"),
+           ...) {
+    ## Theme:
+    theme(text = element_text(family = base_family, color = "white"),
+          plot.title = element_text(
+            family = base_family,
+            face = "bold",
+            size = title.size,
+            # color = "white"
+            color = "grey90"
+          ),
+          plot.subtitle = element_text(size = subtitle.size),
+          plot.caption = element_text(size = caption.size),
+          # panel.background = element_rect(fill = "black"),
+          # plot.background = element_rect(fill = "black"),
+          panel.background = element_rect(fill = "black"),
+          plot.background = element_rect(fill = "black"),
+          axis.text = element_text(size = axis.text.size, color = "white"),
+          axis.text.x = element_text(size = axis.text.x.size, color = "white"),
+          axis.text.y = element_text(size = axis.text.y.size, color = "white"),
+          axis.title = element_text(size = axis.title.size),
+          axis.line.x = element_blank(),
+          axis.line.y = element_blank(),
+          panel.grid.major.x = panel.grid.major.x,
+          panel.grid.major.y = panel.grid.major.y,
+          panel.grid.minor.x = panel.grid.minor.x,
+          panel.grid.minor.y = panel.grid.minor.y,
+          strip.text = element_text(
+            face = "bold",
+            size = strip.text.size,
+            margin = margin(4.4, 4.4, 4.4, 4.4)
+          ),
+          strip.background = element_blank(),
+          axis.ticks = axis.ticks,
+          ...
+    )
+  }
+
+ggplot2::theme_set(theme_sotmreport())
 
 labs_xy_null <- function(...) {
   labs(
@@ -258,12 +312,11 @@ unnest_tokens_ngrams <- function(data, .n, ...) {
 .height <- 7
 .width <- 7
 
-#+ download_report-1, include=T, eval=F, echo=T
+#+ download_sotmreport-1, include=T, eval=F, echo=T
 years <- 2016L:2018L
-# NOTE: `download_report` is a custom function.
 paths <-
   years %>%
-  purrr::map_chr(download_report)
+  purrr::map_chr(download_sotmreport)
 paths
 
 #+ paths-1, include=F, eval=T, echo=F
@@ -499,7 +552,8 @@ viz_toc_n_1yr <-
   ggwaffle::geom_waffle() +
   coord_equal() +
   scale_fill_section() +
-  ggplot2::theme(
+  theme_sotmreport_dark() +
+  theme(
     # plot.caption = element_text(hjust = 0),
     # axis.text.y = element_blank(),
     # axis.text.x = element_blank(),
@@ -542,8 +596,8 @@ viz_toc_content_n1 <-
   geom_col(color = "white") +
   # geom_text(aes(label = label, y = idx), color = "white") +
   guides(fill = FALSE) +
-  # hrbrthemes::scale_fill_ipsum() +
   scale_fill_section() +
+  theme_sotmreport_dark() +
   theme(
     panel.grid.major.y = element_blank()
   ) +
@@ -600,12 +654,14 @@ viz_section_rngs_n_1yr <-
   aes(x = section_label, y = list_pages_ratio, fill = section_label) +
   geom_col() +
   scale_fill_section() +
+  theme_sotmreport_dark() +
   theme(
     # legend.position = "left",
     plot.caption = element_text(hjust = 0),
     axis.text.x = element_blank(),
     panel.grid.major.x = element_blank()
   ) +
+  # theme_sotmreport_dark() +
   labs(
     x = NULL,
     y = "Ratio",
@@ -1054,100 +1110,6 @@ words_tfidf <-
   arrange(desc(tf_idf))
 words_tfidf
 
-#+ words_tern-1, include=F, eval=T, echo=F
-words_tern <-
-  words_tfidf %>%
-  select(year, word, tf) %>%
-  # group_by(year, word) %>%
-  # mutate(tf_max = max(tf, na.rm = TRUE)) %>%
-  # ungroup() %>%
-  spread(year, tf, fill = 0)
-words_tern
-
-# words_tern_mark <-
-#   words_filt %>%
-#   mutate(.year = year, idx = row_number()) %>%
-#   select(.year, idx, year, word, tf) %>%
-#   spread(year, tf) %>%
-#   arrange(idx)
-# words_tern_mark
-
-#+ viz_words_tern-1, include=F, eval=T, echo=F
-# Reference: https://d4tagirl.com/2018/01/does-the-twitter-ratio-apply-to-the-rstats-community
-# library("ggtern")
-arrws <- tibble(
-  x = c(1, 0, 0),
-  y = c(0, 1, 0),
-  z = c(0, 0, 1),
-  xend = c(0, 1, 1),
-  yend = c(1, 0, 1),
-  zend = c(1, 1, 0)
-)
-
-library("ggtern")
-# x  <- data.frame(
-#   A = c( 0.33, 0.4 ),
-#   B = c( 0.33, 0.5),
-#   C = c(0.33,0.1)
-# )
-# ggtern(data=x,aes(A,B,C)) +
-#   geom_path(color="green")+
-#   geom_point(type="l",shape=21,size=1) +
-#   geom_text(label=c("(1/3,1/3,1/3)","(2/5,1/2,1/10)"), color="red", hjust=0, vjust=-1)+
-#   theme_classic()
-
-# NOTE: Need to import `{ggtern}` for this to work. Also, it seems like the year
-# labels have to have tick marks (and not quotes). Otherwise, the following error
-# is received: "Error in rowSums(input[, ix.trl]) : 'x' must be numeric".
-viz_words_tern <-
-  words_tern %>%
-  rename_at(vars(-word), ~paste0("Year ", .)) %>%
-  mutate(idx = row_number()) %>%
-  mutate(idx_rev = n() - idx + 1) %>%
-  mutate(lab = case_when(
-    idx <= 10 ~ word,
-    TRUE ~ NA_character_
-  )
-  ) %>%
-  # filter(idx <= 4) %>%
-  ggtern::ggtern(aes(x = `Year 2016`, y = `Year 2017`, z = `Year 2018`)) +
-  # ggtern::ggtern(aes(x = `y2016`, y = `y2017`, z = `y2018`)) +
-  geom_point() +
-  # geom_text(aes(label = lab)) +
-  ggtern::geom_mask() +
-  geom_segment(
-    data = arrws,
-    aes(x, y, z, xend = xend, yend = yend, zend = zend),
-    color = "grey",
-    alpha = 0.2,
-    size = 1
-  ) +
-  theme(legend.position = "none") +
-  # ggforce::geom_mark_circle(
-  #   data = words_tern_mark %>% filter(idx <= 10),
-  #   aes(label = word)
-  # ) +
-  ggtern::theme_classic()
-viz_words_tern
-
-#+ viz_words_tern-2, include=F, eval=T, echo=F
-teproj::export_ext_png(
-  viz_words_tern,
-  export = .export_viz,
-  dir = .dir_viz,
-  units = .units,
-  height = .height,
-  width = .width
-)
-# pacman::p_unload("ggtern")
-theme_set(theme_custom())
-
-#+ viz_words_tern-3, include=F, eval=F, echo=F
-# TODO: How to add labels?
-# UPDATE: It's giving me a lot of trouble (perhaps due to the package not
-# being updated in a while), so forget about it.
-viz_build <- ggplot_build(viz_words_tern)
-viz_build$data[[2]]$PANEL
 
 #+ viz_tfidf-1, include=F, eval=T, echo=F
 words_tfidf_filt <-
@@ -1215,4 +1177,133 @@ teproj::export_ext_png(
   height = .height_wide,
   width = .width_wide
 )
+
+#+ viz_words_tfidf-manual
+words_tfidf %>%
+  select(year, word, tf) %>%
+  mutate(year = dense_rank(year))
+
+#+ words_tern-1, include=F, eval=T, echo=F
+words_tern <-
+  words_tfidf %>%
+  select(year, word, tf) %>%
+  # group_by(year, word) %>%
+  # mutate(tf_max = max(tf, na.rm = TRUE)) %>%
+  # ungroup() %>%
+  spread(year, tf, fill = 0)
+words_tern
+
+# words_tern_mark <-
+#   words_filt %>%
+#   mutate(.year = year, idx = row_number()) %>%
+#   select(.year, idx, year, word, tf) %>%
+#   spread(year, tf) %>%
+#   arrange(idx)
+# words_tern_mark
+
+#+ viz_words_tern-1, include=F, eval=T, echo=F
+# Reference: https://d4tagirl.com/2018/01/does-the-twitter-ratio-apply-to-the-rstats-community
+# library("ggtern")
+arrws <- tibble(
+  x = c(1, 0, 0),
+  y = c(0, 1, 0),
+  z = c(0, 0, 1),
+  xend = c(0, 1, 1),
+  yend = c(1, 0, 1),
+  zend = c(1, 1, 0)
+)
+
+# library("ggtern")
+# pacman::p_unload("ggtern")
+# x  <- data.frame(
+#   A = c( 0.33, 0.4 ),
+#   B = c( 0.33, 0.5),
+#   C = c(0.33,0.1)
+# )
+# ggtern(data=x,aes(A,B,C)) +
+#   geom_path(color="green")+
+#   geom_point(type="l",shape=21,size=1) +
+#   geom_text(label=c("(1/3,1/3,1/3)","(2/5,1/2,1/10)"), color="red", hjust=0, vjust=-1)+
+#   theme_classic()
+
+# NOTE: Need to import `{ggtern}` for this to work. Also, it seems like the year
+# labels have to have tick marks (and not quotes). Otherwise, the following error
+# is received: "Error in rowSums(input[, ix.trl]) : 'x' must be numeric".
+viz_words_tern <-
+  words_tern %>%
+  rename_at(vars(-word), ~paste0("Year ", ., "")) %>%
+  # rename_at(vars(-word), ~paste0("y", .)) %>%
+  # mutate_at(vars(word), as.factor) %>%
+  mutate(idx = row_number()) %>%
+  mutate(idx_rev = n() - idx + 1) %>%
+  mutate(lab = case_when(
+    idx <= 10 ~ word,
+    TRUE ~ NA_character_
+  )
+  ) %>%
+  arrange(idx_rev) %>%
+  # filter(idx <= 4) %>%
+  ggtern::ggtern(aes(x = `Year 2016`, y = `Year 2017`, z = `Year 2018`)) +
+  geom_point() +
+  ggtern::geom_mask() +
+  # theme_sotmreport_dark() +
+  # ggtern::theme(
+  #   # tern.axis.text.T = element_text(color = "white"),
+  #   strip.text.x = element_text(color = "blue")
+  # ) +
+  ggtern::theme_classic() +
+  ggtern::theme_hidelabels() +
+  # theme(
+  #   text = element_text(color = "white"),
+  #   # panel.background = element_rect(fill = "white"),
+  #   plot.background = element_rect(fill = "black"),
+  #   axis.text = element_text(size = 14, color = "white"),
+  #   axis.text.x = element_text(size = 14, color = "white"),
+  #   axis.text.y = element_text(size = 14, color = "white"),
+  #   axis.title = element_text(size = 14),
+  #   # strip.text.x = element_text(size = 14, color = "white"),
+  #   # strip.text.y = element_text(size = 14, color = "white"),
+  #   legend.position = "none"
+  # ) +
+  labs(
+    title = "Ternary Plot",
+    subtitle = .viz_label_content,
+    caption = .viz_footer
+  )
+
+viz_words_tern$labels$x <- "2016"
+viz_words_tern$labels$y <- "2017"
+viz_words_tern$labels$z <- "2018"
+viz_words_tern
+
+#+ viz_words_tern-2, include=F, eval=T, echo=F
+teproj::export_ext_png(
+  viz_words_tern,
+  export = .export_viz,
+  dir = .dir_viz,
+  units = .units,
+  height = .height,
+  width = .width
+)
+# pacman::p_unload("ggtern")
+# theme_set(theme_sotmreport_dark())
+
+#+ viz_words_tern-3, include=F, eval=F, echo=F
+# TODO: How to add labels?
+# UPDATE: It's giving me a lot of trouble (perhaps due to the package not
+# being updated in a while), so forget about it.
+viz_build <- ggplot_build(viz_words_tern)
+viz_build$data[[1]]
+viz_build$layout$render
+
+# viz_build$data[[1]] %>% ggplot() + aes(x = x, y = y, z = z) + geom_contour() # + geom_density_2d()
+words_tfidf %>%
+  mutate(y = n) %>%
+  mutate(y = log(n + 1)) %>%
+  # filter(y > min(y)) %>%
+  arrange(desc(y)) %>%
+  ggplot() +
+  aes(x = year, y = y) +
+  ggbeeswarm::geom_quasirandom(method = "pseudorandom")
+
 
