@@ -28,7 +28,6 @@ toc_aug <-
       str_detect(., "^figure") ~ "figure",
       str_detect(., "^table") ~ "table",
       str_detect(., "^[a-z]") ~ "subsection",
-      TRUE ~ NA_character_
     )
     )
   ) %>%
@@ -150,20 +149,4 @@ toc_n %>% pull(section_label) %>% levels()
 
 toc_content_n <- toc_n %>% subset_content()
 toc_content_n
-
-toc_n_1yr <- toc_content_n %>%  filter(year == 2018)
-toc_n_1yr
-
-toc_n_1yr_wfl <-
-  toc_n_1yr %>%
-  # mutate_at(vars(section_label), as.character) %>%
-  ggwaffle::waffle_iron(ggwaffle::aes_d(group = idx_section)) %>%
-  as_tibble() %>%
-  inner_join(section_labels %>% rename(group = idx_section)) %>%
-  mutate_at(vars(section_label), ~forcats::fct_reorder(., group))
-toc_n_1yr_wfl
-
-toc_content_n1 <- toc_content_n %>% filter(n == 1)
-toc_content_n1
-
 

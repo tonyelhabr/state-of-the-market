@@ -128,7 +128,8 @@ subset_content <- function(data) {
 
 # Reference: https://github.com/Ryo-N7/soccer_ggplots/blob/master/Copa%20America%202019/copa_america2019.rmd
 theme_sotmreport_dark <-
-  function(base_family = "Arial Narrow",
+  function(base_family = "Arial",
+           family_title = "Arial Narrow",
            title.size = 22,
            subtitle.size = 14,
            caption.size = 14,
@@ -139,7 +140,7 @@ theme_sotmreport_dark <-
            strip.text.size = 18,
            legend_title_size = 14,
            legend_text_size = 12,
-           color_bkgrd = "grey90",
+           color_bkgrd = "grey95",
            color_grid = ifelse(color_bkgrd == "black", "white", "black"),
            color_text = color_grid,
            color_title = color_text,
@@ -152,7 +153,7 @@ theme_sotmreport_dark <-
     theme(
       text = element_text(family = base_family, color = color_text),
       plot.title = element_text(
-        family = base_family,
+        family = family_title,
         face = "bold",
         size = title.size,
         color = color_text
@@ -166,6 +167,8 @@ theme_sotmreport_dark <-
       axis.text.x = element_text(size = axis.text.x.size, color = color_text),
       axis.text.y = element_text(size = axis.text.y.size, color = color_text),
       axis.title = element_text(size = axis.title.size),
+      axis.title.x = element_text(hjust = 1),
+      axis.title.y = element_text(hjust = 1),
       axis.line.x = element_blank(),
       axis.line.y = element_blank(),
       legend.title = element_text(
