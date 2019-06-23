@@ -53,6 +53,7 @@ toc_aug <-
     )
     )
   ) %>%
+  mutate_at(vars(index), as.integer) %>%
   mutate(page_num = str_replace(line, "(^.*[-]\\s?+)([ivx0-9]+$)", "\\2")) %>%
   mutate_at(
     vars(page_num),
@@ -71,7 +72,15 @@ toc_aug_ex <-
   # filter(label %in% c("review of real-time market outcomes", "real-time market prices"))
   group_by(line_type) %>%
   filter(row_number() == first(row_number())) %>%
-  ungroup()
+  ungroup() %>%
+  select(
+    Year = year,
+    `Line Type` = line_type,
+    Index = index,
+    `Page Number` = page_num,
+    Label = label
+  ) %>%
+  create_kable()
 toc_aug_ex
 
 section_rngs <-
@@ -131,12 +140,8 @@ section_rngs_n <-
   subset_content() %>%
   count(year, section_label) %>%
   left_join(section_rngs) %>%
-  mutate(n_pages = page_end - page_start) %>%
-  mutate(list_pages_ratio = n / n_pages)
+  mutate(n_pages = page_end - page_start)
 section_rngs_n
-
-section_rngs_n_1yr <- section_rngs_n %>% filter(year == 2018)
-section_rngs_n_1yr
 
 toc_n <-
   toc_sections %>%
@@ -150,3 +155,42 @@ toc_n %>% pull(section_label) %>% levels()
 toc_content_n <- toc_n %>% subset_content()
 toc_content_n
 
+toc_n_1yr <- toc_content_n %>% filter(year == 2018)
+toc_n_1yr
+
+summ_toc_n_1yr <-
+  toc_n_1yr %>%
+  group_by(year, section_label) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  mutate(label = sprintf('%s - %d', section_label, n))
+summ_toc_n_1yr
+
+toc_content_n1 <-
+  toc_content_n %>%
+  filter(n == 1) %>%
+  group_by(year) %>%
+  mutate(idx = row_number()) %>%
+  ungroup() %>%
+  group_by(section_label) %>%
+  mutate(idx_max = max(idx)) %>%
+  ungroup()
+toc_content_n1
+
+toc_content_n1_show <-
+  toc_content_n1 %>%
+  select(
+    Year = year,
+    Section = section_label,
+    Type = line_type,
+    Label = label
+  ) %>%
+  create_kable()
+toc_content_n1_show
+
+summ_toc_content_n1 <-
+  toc_content_n1 %>%
+  group_by(section_label) %>%
+  summarise(idx_max = max(idx)) %>%
+  ungroup()
+summ_toc_content_n1

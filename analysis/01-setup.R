@@ -50,7 +50,6 @@ pages_n <-
   select(-page)
 pages_n
 
-
 # NOTE: These are the same across all reports.
 toc_page_start <- 3L
 toc_page_end <- 7L
@@ -58,7 +57,6 @@ toc_pages <-
   pages %>%
   filter(idx_page >= 3L, idx_page <= (toc_page_end - 1))
 toc_pages
-
 
 body_pages <-
   pages %>%

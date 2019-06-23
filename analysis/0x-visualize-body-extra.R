@@ -64,7 +64,7 @@ viz_words_tern <-
   ggtern::ggtern(aes(x = `Year 2016`, y = `Year 2017`, z = `Year 2018`)) +
   geom_point() +
   ggtern::geom_mask() +
-  # theme_sotmreport_dark() +
+  # () +
   # ggtern::theme(
   #   # tern.axis.text.T = element_text(color = "white"),
   #   strip.text.x = element_text(color = "blue")
@@ -95,16 +95,16 @@ viz_words_tern$labels$z <- "2018"
 viz_words_tern
 
 #+ viz_words_tern-2, include=F, eval=T, echo=F
-teproj::export_ext_png(
-  viz_words_tern,
-  export = .export_viz,
-  dir = .dir_viz,
-  units = .units,
-  height = .height,
-  width = .width
-)
+# teproj::export_ext_png(
+#   viz_words_tern,
+#   export = .export_viz,
+#   dir = .dir_viz,
+#   units = .units,
+#   height = .height,
+#   width = .width
+# )
 # pacman::p_unload("ggtern")
-# theme_set(theme_sotmreport_dark())
+# theme_set(())
 
 # TODO: How to add labels?
 # UPDATE: It's giving me a lot of trouble (perhaps due to the package not

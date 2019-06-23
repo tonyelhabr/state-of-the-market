@@ -87,12 +87,16 @@ roman2numeric <- function (x) {
   }
 }
 
-subset_content <- function(data) {
+.subset_line_type <- function(data, .line_type) {
   data %>%
-    filter(line_type %in% c("table", "figure"))
+    filter(line_type %in% .line_type)
 }
 
-.dir_viz <- "analysis/figs"
+subset_content <- purrr::partial(.subset_line_type, .line_type = c("table", "figure"))
+
+subset_text <- purrr::partial(.subset_line_type, .line_type = c("text"))
+
+.dir_viz <- "output"
 .export_viz <- TRUE
 # theme_sotmreport <- function(...) {
 #   teplot::theme_te(
@@ -127,7 +131,7 @@ subset_content <- function(data) {
 # }
 
 # Reference: https://github.com/Ryo-N7/soccer_ggplots/blob/master/Copa%20America%202019/copa_america2019.rmd
-theme_sotmreport_dark <-
+theme_sotmreport <-
   function(base_family = "Arial",
            family_title = "Arial Narrow",
            title.size = 22,
@@ -144,11 +148,7 @@ theme_sotmreport_dark <-
            color_grid = ifelse(color_bkgrd == "black", "white", "black"),
            color_text = color_grid,
            color_title = color_text,
-           panel.grid.major.x = element_line(size = 0.5, color = color_grid),
-           panel.grid.major.y = element_line(size = 0.5, color = color_grid),
-           panel.grid.minor.x = element_blank(),
-           panel.grid.minor.y = element_blank(),
-           axis.ticks = element_line(color = color_grid),
+           size_grid = 0.25,
            ...) {
     theme(
       text = element_text(family = base_family, color = color_text),
@@ -163,6 +163,11 @@ theme_sotmreport_dark <-
       panel.background = element_rect(fill = color_bkgrd),
       plot.background = element_rect(fill = color_bkgrd),
       legend.background = element_rect(fill = color_bkgrd),
+      panel.grid.major.x = element_line(size = size_grid, color = color_grid),
+      panel.grid.major.y = element_line(size = size_grid, color = color_grid),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      axis.ticks = element_line(color = color_grid),
       axis.text = element_text(size = axis.text.size, color = color_text),
       axis.text.x = element_text(size = axis.text.x.size, color = color_text),
       axis.text.y = element_text(size = axis.text.y.size, color = color_text),
@@ -178,10 +183,6 @@ theme_sotmreport_dark <-
       legend.text = element_text(
         size = legend_text_size
       ),
-      panel.grid.major.x = panel.grid.major.x,
-      panel.grid.major.y = panel.grid.major.y,
-      panel.grid.minor.x = panel.grid.minor.x,
-      panel.grid.minor.y = panel.grid.minor.y,
       strip.text = element_text(
         # margin = margin(4.4, 4.4, 4.4, 4.4),
         # margin = margin(2, 2, 2, 2),
@@ -189,12 +190,13 @@ theme_sotmreport_dark <-
         size = strip.text.size
       ),
       strip.background = element_blank(),
-      axis.ticks = axis.ticks,
       ...
     )
   }
 
 # ggplot2::theme_set(theme_sotmreport())
+
+hrbrthemes::update_geom_font_defaults(family = 'Arial', size = 4.5)
 
 labs_xy_null <- function(...) {
   labs(
@@ -206,30 +208,35 @@ labs_xy_null <- function(...) {
 
 .width_section_label <- 30
 scale_fill_section <- function(..., width = .width_section_label) {
-  f <- ggthemes::scale_fill_tableau
-  # f <- ggthemes::scale_fill_solarized
-  f(labels = function(x) str_wrap(x, width = width), ...)
+  ggthemes::scale_fill_tableau(labels = function(x) str_wrap(x, width = width), ...)
 }
 
 scale_color_section <- function(..., width = .width_section_label) {
-  f <- ggthemes::scale_color_tableau
-  # f <- ggthemes::scale_color_solarized
-  f(labels = function(x) str_wrap(x, width = width), ...)
+  ggthemes::scale_color_tableau(labels = function(x) str_wrap(x, width = width), ...)
 }
 
-scale_color_year <- function(...) {
-  ggthemes::scale_color_gdocs(...)
-}
+scale_color_year <- ggthemes::scale_color_gdocs
 
-head_reports <- function(data, ..., .n_rows = 30) {
+scale_fill_year <- ggthemes::scale_fill_gdocs
+
+create_gg_arrw <- function(length = unit(0.2, 'cm'), ...) {
+  arrow(length = length, type = 'closed', ...)
+}
+.size_arrw <- 1
+
+.n_years <- 3
+.n_row_year_head <- 10
+.n_rows_head <- .n_years * .n_row_year_head
+head_reports <- function(data, ..., .n_rows = .n_rows_head, .n_row_year = .n_row_year_head) {
   opt_old <- getOption("tibble.print_max")
   # options(tibble.print_min = .n_rows)
   options(tibble.print_max = .n_rows)
   on.exit(options(tibble.print_min = opt_old))
   data %>%
     group_by(year, ...) %>%
-    slice(c(1:10), .preserve = FALSE) %>%
+    slice(c(1:.n_row_year), .preserve = FALSE) %>%
     ungroup()
+
 }
 
 paste_collapse <-
@@ -306,14 +313,14 @@ averagize_at <-
            col,
            ...,
            sep = "_",
-           suffix = "avg",
+           suffix = "mean",
            col_new = paste0(col, sep, suffix)) {
     col_sym <- sym(col)
     col_new_sym <- sym(col_new)
     data %>%
-      # summarise(!!col_new_sym := geom_mean(!!col_sym))
+      summarise(!!col_new_sym := geom_mean(!!col_sym))
       # summarise(!!col_new_sym := exp(mean(log(!!col_sym + 1)) - 1))
-      summarise(!!col_new_sym := mean(!!col_sym))
+      # summarise(!!col_new_sym := mean(!!col_sym))
   }
 
 # functions-end ----
@@ -327,7 +334,218 @@ averagize_at <-
 .units <- "in"
 .height_wide <- 6
 .width_wide <- 10
-.height_tall <- 10
-.width_tall <- 6
-.height <- 7
-.width <- 7
+# .height_tall <- 10
+# .width_tall <- 6
+# .height <- 7
+# .width <- 7
+
+create_kable <-
+  function (data,
+            n_show = Inf,
+            show_footnote = ifelse(nrow(data) >
+                                     n_show, TRUE, FALSE),
+            n_footnote = nrow(data),
+            format = "html",
+            ...,
+            full_width = FALSE,
+            position = "center") {
+    stopifnot(is.data.frame(data))
+    res <- data
+    if (show_footnote & (n_show < nrow(data))) {
+      res <- res[1:n_show,]
+    }
+    res <- knitr::kable(res, format = format, escape = FALSE)
+    if (format == "html") {
+      res <- kableExtra::kable_styling(res, full_width = full_width,
+                                       position = position)
+      if (show_footnote) {
+        res <-
+          kableExtra::add_footnote(res, c(sprintf(
+            "# of total rows: %s",
+            .format_total(n_footnote)
+          )), notation = "number")
+      }
+    }
+    res
+  }
+
+.buffer_arrw <- 1
+.len_arrw <- 2
+create_gg_arrw_data <-
+  function(x1,
+           m,
+           dir = 'up',
+           len = switch(dir, up = .len_arrw, down = -.len_arrw, .len_arrw),
+           buffer = .buffer_arrw,
+           b = 0) {
+    m_recipr <- -1 / m
+    # x1 <- x1 - buffer
+    y1 <- m * x1 + b
+    x2 <- x1 - len
+    # formula: (y - y2) = m_recipr * (x - x2)
+    y2 <- m_recipr * (x2 - x1) + y1
+    tibble(
+      x = x1,
+      y = y1,
+      xend = x2,
+      yend = y2
+    )
+  }
+create_gg_arrw_data_up <- function(...) {
+  create_gg_arrw_data(dir = 'up', ...)
+}
+
+create_gg_arrw_data_down <- function(...) {
+  create_gg_arrw_data(dir = 'down', ...)
+}
+
+
+do_visualize_x_vs_y <-
+  function(data,
+           arrws = TRUE,
+           labels = TRUE,
+           cor = TRUE,
+           label_arrw,
+           x_arrw = NULL,
+           x_arrw_up_buffer = -1,
+           y_arrw_up_buffer = 1,
+           x_arrw_down_buffer = 1,
+           y_arrw_down_buffer = -1,
+           x_cor = NULL,
+           y_cor = NULL,
+           n_chr_wrap = 20,
+           ...) {
+    stopifnot(is.data.frame(data))
+    nms <- data %>% names()
+    stopifnot(all(c('section_label', 'n', 'n_pages') %in% nms))
+
+    summ_ratio <-
+      data %>%
+      summarise_at(
+        vars(n, n_pages),
+        list(mean = mean, min = min, max = max)
+      ) %>%
+      mutate(n_ratio = n_mean / n_pages_mean)
+
+    m <- summ_ratio %>% pull(n_ratio)
+    x_max <- summ_ratio %>% pull(n_pages_max)
+    x_min <- summ_ratio %>% pull(n_pages_min)
+    # y_max <- summ_ratio %>% pull(n_max)
+
+    # NOTE: Need these for `labels` even if `arrws = FALSE`.
+    if(arrws | labels) {
+      if (is.null(x_arrw)) {
+        # x_arrw <- 0.1 * x_max
+        x_arrw <- 0.9 * x_min
+      }
+
+      arrw1 <- create_gg_arrw_data_up(x1 = x_arrw, m = m)
+      arrw2 <- create_gg_arrw_data_down(x1 = x_arrw, m = m)
+    }
+
+    if(cor) {
+      cor_ratio <-
+        data %>%
+        select(n, n_pages) %>%
+        corrr::correlate(quiet = TRUE) %>%
+        select(n) %>%
+        slice(2) %>%
+        pull(n)
+
+      if (is.null(x_cor)) {
+        x_cor <- 0.5 * x_max
+      }
+      if (is.null(y_cor)) {
+        y_cor <- (x_cor - 1) * m
+      }
+    }
+    viz <-
+      data %>%
+      ggplot() +
+      aes(x = n_pages, y = n, color = section_label) +
+      geom_point(size = 4) +
+      geom_abline(
+        data = summ_ratio,
+        aes(slope = n_ratio, intercept = 0),
+        linetype = 'dashed',
+        color = 'black',
+        size = 2
+      )
+
+    if(arrws) {
+      viz <-
+        viz +
+        geom_segment(
+          data = arrw1,
+          inherit.aes = FALSE,
+          aes(
+            x = x,
+            y = y,
+            xend = xend,
+            yend = yend
+          ),
+          size = 2,
+          arrow = create_gg_arrw()
+        ) +
+        geom_segment(
+          data = arrw2,
+          inherit.aes = FALSE,
+          aes(
+            x = x,
+            y = y,
+            xend = xend,
+            yend = yend
+          ),
+          size = 2,
+          arrow = create_gg_arrw()
+        )
+
+    }
+
+    if(labels) {
+      viz <-
+        viz +
+        geom_text(
+          data = arrw1,
+          inherit.aes = FALSE,
+          aes(x = xend + x_arrw_up_buffer, y = yend + y_arrw_up_buffer),
+          size = 4,
+          hjust = 1,
+          fontface = 'bold.italic',
+          label = str_wrap(glue::glue('More {label_arrw} per section'), n_chr_wrap)
+        ) +
+        geom_text(
+          data = arrw2,
+          inherit.aes = FALSE,
+          aes(x = xend + x_arrw_down_buffer, y = yend + y_arrw_down_buffer),
+          size = 4,
+          hjust = 0,
+          fontface = 'bold.italic',
+          label = str_wrap(glue::glue('Less {label_arrw} per section'), n_chr_wrap)
+        )
+
+    }
+
+    if(cor) {
+
+      viz <-
+        viz +
+        geom_text(
+          inherit.aes = FALSE,
+          aes(x = x_cor, y = y_cor),
+          # nudge_y = -1,
+          # nudge_x = 1,
+          # segment.color = NA,
+          size = 4,
+          hjust = 0,
+          fontface = 'italic',
+          label = glue::glue('Overall correlation: {round(cor_ratio, 3)}')
+        ) +
+        guides(color = FALSE) +
+        ggforce::geom_mark_ellipse(aes(label = section_label)) +
+        expand_limits(x = 0, y = 0)
+      viz
+    }
+
+    viz
+  }

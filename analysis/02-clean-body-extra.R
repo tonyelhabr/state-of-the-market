@@ -63,37 +63,38 @@
 
 #+ lines_tfidf-1, include=F, eval=F, echo=F
 # FIXME: Using this?
-# lines_tfidf <-
-#   lines_redux %>%
-#   count(year, line) %>%
-#   # mutate(n = 1) %>%
-#   tidytext::bind_tf_idf(line, year, n) %>%
-#   arrange(desc(tf_idf))
-# lines_tfidf
-#
-# n_top <- 10
-# lines_tfidf_top <-
-#   lines_tfidf %>%
-#   group_by(year) %>%
-#   arrange(desc(tf_idf), .by_group = TRUE) %>%
-#   filter(line %>% str_detect("\\[|admin", negate = TRUE)) %>%
-#   slice(c(1:n_top)) %>%
-#   ungroup()
-# lines_tfidf_top
+lines_tfidf <-
+  # lines_redux %>%
+  lines_redux_filt %>%
+  count(year, line) %>%
+  # mutate(n = 1) %>%
+  tidytext::bind_tf_idf(line, year, n) %>%
+  arrange(desc(tf_idf))
+lines_tfidf
 
-#+ lines_redux_n-1, include=F, eval=F, echo=F
+n_top <- 10
+lines_tfidf_top <-
+  lines_tfidf %>%
+  group_by(year) %>%
+  arrange(desc(tf_idf), .by_group = TRUE) %>%
+  filter(line %>% str_detect("\\[|admin", negate = TRUE)) %>%
+  slice(c(1:n_top)) %>%
+  ungroup()
+lines_tfidf_top
+
+#+ lines_redux_n-1, include=F#, eval=F, echo=F
 # FIXME: Using this?
-# lines_redux_n <-
-#   lines_redux %>%
-#   count(line_type, line, sort = TRUE) %>%
-#   # filter(!(line_type %in% c("page_footer", "section_alphanumeric_label"))) %>%
-#   filter(line_type == "content")
-# lines_redux_n
+lines_redux_n <-
+  lines_redux_filt %>%
+  count(line_type, line, sort = TRUE) %>%
+  # filter(!(line_type %in% c("page_footer", "section_alphanumeric_label"))) %>%
+  filter(line_type == "text")
+lines_redux_n
 
-# lines_redux_n1 <-
-#   lines_redux_n %>%
-#   filter(n > 1)
-# lines_redux_n1
+lines_redux_n1 <-
+  lines_redux_n %>%
+  filter(n > 1)
+lines_redux_n1
 
 #+ ggtern-1
 # library("ggtern")
