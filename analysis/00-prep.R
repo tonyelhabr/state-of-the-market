@@ -325,9 +325,9 @@ averagize_at <-
 
 # functions-end ----
 #+ viz-vars-1, include=F, eval=F, echo=F
-.viz_footer <- "\nBy Tony ElHabr"
+viz_footer <- "\nBy Tony ElHabr"
 .viz_label_potamac <- "Potomac Economics' \"State of the Market\" reports on ERCOT"
-.viz_label_content <- "figures and tables"
+viz_label_content <- "figures and tables"
 # .n_chr_title_wrap <- 90
 # .n_chr_subtitle_wrap <- 120
 # .n_chr_footer_wrap <- 120
@@ -402,10 +402,15 @@ create_gg_arrw_data_down <- function(...) {
 
 do_visualize_x_vs_y <-
   function(data,
-           arrws = TRUE,
+           diagonal = TRUE,
+           arrws = FALSE,
            labels = TRUE,
            cor = TRUE,
-           label_arrw,
+           col_section = 'section_label',
+           col_x = 'n_pages',
+           col_y = 'n',
+           label_section = 'section',
+           label_arrw = '',
            x_arrw = NULL,
            x_arrw_up_buffer = -1,
            y_arrw_up_buffer = 1,
@@ -417,20 +422,25 @@ do_visualize_x_vs_y <-
            ...) {
     stopifnot(is.data.frame(data))
     nms <- data %>% names()
-    stopifnot(all(c('section_label', 'n', 'n_pages') %in% nms))
+    stopifnot(all(c(col_section, col_x, col_y) %in% nms))
+
+    col_x_sym <- sym(col_x)
+    col_y_sym <- sym(col_y)
+    col_section_sym <- sym(col_section)
 
     summ_ratio <-
       data %>%
       summarise_at(
-        vars(n, n_pages),
+        vars(!!col_x_sym, !!col_y_sym),
         list(mean = mean, min = min, max = max)
       ) %>%
       mutate(n_ratio = n_mean / n_pages_mean)
 
     m <- summ_ratio %>% pull(n_ratio)
-    x_max <- summ_ratio %>% pull(n_pages_max)
-    x_min <- summ_ratio %>% pull(n_pages_min)
-    # y_max <- summ_ratio %>% pull(n_max)
+    col_x_max_sym <- sym(sprintf('%s_max', col_x))
+    col_x_min_sym <- sym(sprintf('%s_min', col_x))
+    x_max <- summ_ratio %>% pull(!!col_x_max_sym)
+    x_min <- summ_ratio %>% pull(!!col_x_min_sym)
 
     # NOTE: Need these for `labels` even if `arrws = FALSE`.
     if(arrws | labels) {
@@ -446,11 +456,11 @@ do_visualize_x_vs_y <-
     if(cor) {
       cor_ratio <-
         data %>%
-        select(n, n_pages) %>%
+        select(!!col_x_sym, !!col_y_sym) %>%
         corrr::correlate(quiet = TRUE) %>%
-        select(n) %>%
+        select(temp = !!col_x_sym) %>%
         slice(2) %>%
-        pull(n)
+        pull(temp)
 
       if (is.null(x_cor)) {
         x_cor <- 0.5 * x_max
@@ -459,18 +469,24 @@ do_visualize_x_vs_y <-
         y_cor <- (x_cor - 1) * m
       }
     }
+
     viz <-
       data %>%
       ggplot() +
-      aes(x = n_pages, y = n, color = section_label) +
-      geom_point(size = 4) +
-      geom_abline(
-        data = summ_ratio,
-        aes(slope = n_ratio, intercept = 0),
-        linetype = 'dashed',
-        color = 'black',
-        size = 2
-      )
+      aes(x = !!col_x_sym, y = !!col_y_sym, color = !!col_section_sym) +
+      geom_point(size = 4)
+
+    if(diagonal) {
+      viz <-
+        viz +
+        geom_abline(
+          data = summ_ratio,
+          aes(slope = n_ratio, intercept = 0),
+          linetype = 'dashed',
+          color = 'black',
+          size = 2
+        )
+    }
 
     if(arrws) {
       viz <-
@@ -499,7 +515,6 @@ do_visualize_x_vs_y <-
           size = 2,
           arrow = create_gg_arrw()
         )
-
     }
 
     if(labels) {
@@ -512,7 +527,7 @@ do_visualize_x_vs_y <-
           size = 4,
           hjust = 1,
           fontface = 'bold.italic',
-          label = str_wrap(glue::glue('More {label_arrw} per section'), n_chr_wrap)
+          label = str_wrap(glue::glue('More {label_arrw} per {label_section}'), n_chr_wrap)
         ) +
         geom_text(
           data = arrw2,
@@ -521,25 +536,25 @@ do_visualize_x_vs_y <-
           size = 4,
           hjust = 0,
           fontface = 'bold.italic',
-          label = str_wrap(glue::glue('Less {label_arrw} per section'), n_chr_wrap)
+          label = str_wrap(glue::glue('Less {label_arrw} per {label_section}'), n_chr_wrap)
         )
 
     }
 
     if(cor) {
 
+      # NOTE: For whatever reason, text is a lot less blurry when `x` and `y`
+      # are provided via`data`.
       viz <-
         viz +
         geom_text(
+          data = tibble(x = x_cor, y = y_cor),
           inherit.aes = FALSE,
-          aes(x = x_cor, y = y_cor),
-          # nudge_y = -1,
-          # nudge_x = 1,
-          # segment.color = NA,
+          aes(x = x, y = y),
           size = 4,
           hjust = 0,
-          fontface = 'italic',
-          label = glue::glue('Overall correlation: {round(cor_ratio, 3)}')
+          fontface = 'bold.italic',
+          label = str_wrap(glue::glue('Overall correlation: {round(cor_ratio, 3)}'), n_chr_wrap)
         ) +
         guides(color = FALSE) +
         ggforce::geom_mark_ellipse(aes(label = section_label)) +

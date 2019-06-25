@@ -14,10 +14,12 @@ hide {
 if(!file.exists(.path_import)) {
   source('analysis/00-prep.R')
   source('analysis/01-setup.R')
-  source('analysis/02-clean-toc.R')
-  source('analysis/02-clean-body.R')
-  # source('analysis/03-visualize-toc.R')
-  # source('analysis/03-visualize-body.R')
+  source('analysis/02a-clean-toc.R')
+  source('analysis/02b-clean-body.R')
+  source('analysis/03a-analyze-toc.R')
+  source('analysis/03b-analyze-body.R')
+  # source('analysis/04a-visualize-toc.R')
+  # source('analysis/04b-visualize-body.R')
   save.image(file = .path_import)
 }
 ```
@@ -257,12 +259,11 @@ Is there some kind of correlation with the number of sentences of text in each s
 It may (or may not) be suprising to find a lack of a relationship here.
 Given our previous finding that the number of `r chr_content` and the number
 of pages in a given section are not really related,
-I would have guessed that the same for the relationship between sentences
+Prior to charting this relationship, I think
+I would have guessed that the same holds for the relationship between sentences
 and number of pages, as we see here.
 
-
-Before we move away from our look at sentence-related things, 
-I think it might be interesting to look at how the counts of sentences
+Next, I think it is also be interesting to look at how the counts of sentences
 per section has changed over time.
 
 ![](output/viz_sentences_section_n_yr.png)
@@ -302,6 +303,18 @@ for which I don't really have a strong "prior" knowledge. And that's the cool
 thing about plotting this kind of data---you gain an understanding of something
 that you wouldn't have known otherwise, which often invites further questions
 and insight.
+
+####
+
+Before I move on from the investigation of sentences, I should say that
+I really wanted to do some kind of quantification of the number of "repeated"
+sentences across the documents. However, I found that this was more difficult
+than I would have liked. For example, take the description of the first
+figure in 2018: "Figure 1 summarizes changes in energy prices and other market costs by showing the all-in price
+of electricity, which is a measure of the total cost of serving load in ERCOT for 2016 through
+2018." The "same" sentence in the 2017 report is "Figure 1 summarizes changes in energy prices and other market costs by showing the all-in price of electricity, which is a measure of the total cost of serving load in ERCOT for 2015 through 2017."
+This is not
+
 
 ### Words
 

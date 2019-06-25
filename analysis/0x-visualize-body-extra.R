@@ -85,8 +85,8 @@ viz_words_tern <-
 # ) +
 labs(
   title = "Ternary Plot",
-  subtitle = .viz_label_content,
-  caption = .viz_footer
+  subtitle = viz_label_content,
+  caption = viz_footer
 )
 
 viz_words_tern$labels$x <- "2016"

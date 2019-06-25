@@ -25,7 +25,6 @@ paths_info <-
   select(year, path)
 paths_info
 
-
 pages_nest <-
   paths_info %>%
   mutate(
@@ -34,7 +33,6 @@ pages_nest <-
   select(-path)
 pages_nest
 
-
 pages <-
   pages_nest %>%
   unnest(page) %>%
@@ -42,7 +40,6 @@ pages <-
   mutate(idx_page = row_number()) %>%
   ungroup()
 pages
-
 
 pages_n <-
   pages_nest %>%

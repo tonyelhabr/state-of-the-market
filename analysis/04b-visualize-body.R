@@ -24,14 +24,13 @@ viz_sentences_section_n <-
     x = 'Number of pages in section',
     y = 'Count of total sentences in each section',
     title = glue::glue(
-      'Which Sections Have a Disproportionate Number of Sentences?'
+      'Is there a Relationship Beween Counts of Pages and Sentences in Sections?'
     ),
     subtitle = glue::glue(
-      'As with the number of pages per section and the number of {.viz_label_content} per section,
-      there is NO evidence for a correlation between the number of pages per section
-      and the number of sentences per section.'
+      'As with the number of pages per section and the number of {viz_label_content} per section,
+      there is NO correlation between the number of pages per section and the number of sentences per section.'
     ),
-    caption = .viz_footer
+    caption = viz_footer
   )
 viz_sentences_section_n
 
@@ -71,7 +70,7 @@ viz_sentences_section_n_yr <-
       either saw a small increase or a decrease going from 2016 to 2017, and two (Reliability
       and Resource Adequacy) experienced a noticeable increase going from 2017 to 2018.'
     ),
-    caption = .viz_footer
+    caption = viz_footer
   )
 viz_sentences_section_n_yr
 
@@ -195,7 +194,7 @@ teproj::export_ext_png(
     # title = glue::glue('Which section is the most 'unique' relative to the others?'),
     title = '',
     subtitle = '\n\n',
-    caption = .viz_footer,
+    caption = viz_footer,
     x = glue::glue('TFIDF of words in {.viz_label_potamac}'),
     y = NULL
   )
@@ -280,7 +279,7 @@ viz_words_tfidf <-
           'The top 10 most unique words identified by TFIDF (after stemming, filtering out stop words, etc.) in each year (relative to the others)
           were those corresponding to regions (e.g. Denton in 2016) and causes (e.g. Hurricane Harvey in 2017) of electric transmission congestion.'
     ),
-    caption = .viz_footer
+    caption = viz_footer
   )
 viz_words_tfidf
 

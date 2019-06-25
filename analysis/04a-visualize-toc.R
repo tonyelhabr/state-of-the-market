@@ -21,16 +21,16 @@ viz_toc_n_1yr_tree <-
     title = str_to_title(
       glue::glue(
         'Composition of {.viz_label_potamac}
-       in 2018, as Told by Counts of {str_to_title(.viz_label_content)}'
+        in 2018, as Told by Counts of {str_to_title(viz_label_content)}'
       )
     ),
     subtitle = glue::glue(
-      'The Real Time Market (RTM) and Day Ahead Market (DAM) sections are filled with the most {.viz_label_content},
+      'The Real Time Market (RTM) and Day Ahead Market (DAM) sections are filled with the most {viz_label_content},
       while the Analysis section has the least. The RTM and DAM are arguably "easier" to quantify, so use of
-      {.viz_label_content} may be more natural. On the other hand, written word may be a more
+      {viz_label_content} may be more natural. On the other hand, written word may be a more
       natural form of exposition for a section that is focused on investigation (i.e. the Analysis section).'
     ),
-    caption = .viz_footer
+    caption = viz_footer
   )
 viz_toc_n_1yr_tree
 
@@ -47,14 +47,14 @@ teproj::export_ext_png(
 .viz_content_section_n <-
   section_rngs_n %>%
   do_visualize_x_vs_y(
-    x_arrw = 8.5,
-    x_cor = 31,
-    y_cor = 6,
-    x_arrw_up_buffer = -0.5,
+    x_arrw = 8,
+    x_cor = 34,
+    y_cor = 2,
+    x_arrw_up_buffer = 2,
     y_arrw_up_buffer = -1,
     x_arrw_down_buffer = 1,
     y_arrw_down_buffer = -1,
-    label_arrw = .viz_label_content
+    label_arrw = viz_label_content
   )
 .viz_content_section_n
 
@@ -64,18 +64,18 @@ viz_content_section_n <-
   theme_sotmreport() +
   labs(
     x = 'Number of pages in section',
-    y = glue::glue('Count of total {.viz_label_content} in each section'),
+    y = glue::glue('Count of total {viz_label_content} in each section'),
     title = str_to_title(
       glue::glue(
-        'Which Sections Have a Disproportionate Number of {str_to_title(.viz_label_content)}?'
+        'Which Sections Have a Disproportionate Number of {str_to_title(viz_label_content)}?'
       )
     ),
     subtitle = glue::glue(
-      'A higher number of pages in a section does NOT imply more {.viz_label_content}.
-      Instead, the sections with higher counts of {.viz_label_content} per page seem to be those with more
+      'A higher number of pages in a section does NOT imply more {viz_label_content}.
+      Instead, the sections with higher counts of {viz_label_content} per page seem to be those with more
       content that is easier to quantify in "standard" ways (i.e. RTM and DAM).'
     ),
-    caption = .viz_footer
+    caption = viz_footer
   )
 viz_content_section_n
 
@@ -129,15 +129,15 @@ viz_toc_content_n1 <-
     fill = 'Section',
     title = str_to_title(
       glue::glue(
-        'How Much Content ({str_to_title(.viz_label_content)}) was Unique to Each Report?'
+        'How Much Content ({str_to_title(viz_label_content)}) was Unique to Each Report?'
       )
     ),
     subtitle = glue::glue(
-      'Identification of {.viz_label_content} appearing in only 1 of the 3 {.viz_label_potamac}
+      'Identification of {viz_label_content} appearing in only 1 of the 3 {.viz_label_potamac}
       between 2016 and 2018 indicates that Day-Ahead Market (DAM), Reliability Unit Commitments (RUCs),
       and Resource Adequacy received more attention in 2018 than in past years.'
     ),
-    caption = .viz_footer
+    caption = viz_footer
   ) +
   coord_flip()
 viz_toc_content_n1
