@@ -564,3 +564,9 @@ do_visualize_x_vs_y <-
 
     viz
   }
+
+pull_distinctly <- function (.data, var = -1, ..., decreasing = FALSE)  {
+  # .data <- .validate_coerce_data(.data)
+  var <- tidyselect::vars_pull(names(.data), !!rlang::enquo(var))
+  sort(unique(.data[[var]]), decreasing = decreasing, ...)
+}
