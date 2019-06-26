@@ -1,8 +1,8 @@
 
 # library('cowplot')
 # viz_content_section_n ----
-.viz_sentences_section_n <-
-  sentences_section_n %>%
+.viz_sents_section_n <-
+  sents_section_n %>%
   do_visualize_x_vs_y(
     arrws = FALSE,
     x_cor = 31,
@@ -12,30 +12,30 @@
     # y_arrw_up_buffer = -1,
     # x_arrw_down_buffer = 1,
     # y_arrw_down_buffer = -1,
-    label_arrw = 'sentences'
+    label_arrw = 'sents_redux_wo_delim'
   )
-.viz_sentences_section_n
+.viz_sents_section_n
 
-viz_sentences_section_n <-
-  .viz_sentences_section_n +
+viz_sents_section_n <-
+  .viz_sents_section_n +
   scale_color_section() +
   theme_sotmreport() +
   labs(
     x = 'Number of pages in section',
-    y = 'Count of total sentences in each section',
+    y = 'Count of total sents_redux_wo_delim in each section',
     title = glue::glue(
       'Is there a Relationship Beween Counts of Pages and Sentences in Sections?'
     ),
     subtitle = glue::glue(
       'As with the number of pages per section and the number of {viz_label_content} per section,
-      there is NO correlation between the number of pages per section and the number of sentences per section.'
+      there is NO correlation between the number of pages per section and the number of sents_redux_wo_delim per section.'
     ),
     caption = viz_footer
   )
-viz_sentences_section_n
+viz_sents_section_n
 
 teproj::export_ext_png(
-  viz_sentences_section_n,
+  viz_sents_section_n,
   export = .export_viz,
   dir = .dir_viz,
   units = .units,
@@ -43,9 +43,9 @@ teproj::export_ext_png(
   width = 10
 )
 
-# viz_sentences_section_n_yr ----
-viz_sentences_section_n_yr <-
-  sentences_section_n %>%
+# viz_sents_section_n_yr ----
+viz_sents_section_n_yr <-
+  sents_section_n %>%
   mutate_at(vars(year), factor) %>%
   ggplot() +
   aes(x = section_label, y = n, group = year, fill = year) +
@@ -66,16 +66,16 @@ viz_sentences_section_n_yr <-
     x = NULL,
     title = str_to_title('How Has the Count of Sentences Per Section Changed Over Time?'),
     subtitle = glue::glue(
-      'The number of sentences has increased from 2016 to 2018 for all sections, but some sections
+      'The number of sents_redux_wo_delim has increased from 2016 to 2018 for all sections, but some sections
       either saw a small increase or a decrease going from 2016 to 2017, and two (Reliability
       and Resource Adequacy) experienced a noticeable increase going from 2017 to 2018.'
     ),
     caption = viz_footer
   )
-viz_sentences_section_n_yr
+viz_sents_section_n_yr
 
 teproj::export_ext_png(
-  viz_sentences_section_n_yr,
+  viz_sents_section_n_yr,
   export = .export_viz,
   dir = .dir_viz,
   units = .units,

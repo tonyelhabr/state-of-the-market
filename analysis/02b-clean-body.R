@@ -43,9 +43,9 @@ lines_aug <-
       str_detect(., '^[a-z]$') ~ 'section_alphanumeric_label',
       str_detect(., '^[0-9]{1,2}$') ~ 'list_item_ordered',
       str_detect(., '\\\uf0b7') ~ 'list_item_unordered',
-      str_detect(., 'figure [0-9]+[:]') ~ 'figure_label',
-      str_detect(., 'figure [0-9]+[^:]') ~ 'figure_explanation',
-      str_detect(., '(admin[.] code)|(see.*puct)') ~ 'miscellaneous',
+      str_detect(., '(figure|table)\\s[0-9]+[:]') ~ 'content_label',
+      str_detect(., '(figure|table)\\s[0-9]+[^:]') ~ 'content_explanation',
+      str_detect(., '(admin[.] code)|(see.*puct)') ~ 'misc',
       str_detect(., '201[2-9] [s]tate [o]f [t]he [m]arket [r]eport') ~ 'page_footer',
       # str_detect(., '^[-A-Z\\s]{10,}') ~ 'section_header',
       # str_length(.) < 20 ~ 'filler',
@@ -57,7 +57,7 @@ lines_aug
 
 lines_aug %>% count(year, line_type)
 lines_aug %>% count(line_type)
-lines_aug %>% filter(line_type == 'miscellaneous')
+lines_aug %>% filter(line_type == 'miscell')
 lines_aug %>% filter(line_type == 'section_label')
 
 body_rngs <-
@@ -169,7 +169,7 @@ words_aug <-
   # mutate_at(vars(word), ~dplyr::if_else(. == year, '[year]', .))
   mutate_at(
     vars(word),
-    list(~case_when(
+    ~case_when(
       !is.na(word_month) ~ delimitize('month'),
       word_int == year ~ delimitize('year'),
       word_int == (year + 1) ~ delimitize('yearlead1'),
@@ -196,7 +196,6 @@ words_aug <-
       # str_detect(., rgx_zones) ~ 'QQzoneQQ',
       TRUE ~ word
     )
-    )
   )
 words_aug
 
@@ -206,48 +205,64 @@ words_filt <-
   anti_join(stop_words)
 words_filt
 
-lines_redux <-
+lines_redux_w_delim <-
   words_aug %>%
   recreate_lines_from_words()
-lines_redux
+lines_redux_w_delim
 
-lines_redux %>% count(line_type)
+lines_redux_w_delim %>% count(line_type)
 
-lines_redux_filt <-
+lines_redux_w_delim_filt <-
   words_filt %>%
   recreate_lines_from_words()
-lines_redux_filt
+lines_redux_w_delim_filt
 
-# sentences ----
+# sents_redux_wo_delim ----
 lines_sections %>% filter(line_type == 'text')
-lines_redux %>% filter(line %>% str_detect('QQ'))
-lines_redux_filt
+lines_redux_w_delim %>% filter(line %>% str_detect('QQ'))
+lines_redux_w_delim_filt
 
-sentences <-
+# WIP, start ----
+lines_redux_wo_delim <-
+  words %>%
+  recreate_lines_from_words()
+lines_redux_wo_delim
+
+body_redux_wo_delim <-
   # lines_sections %>%
-  # filter(line_type == 'text') %>%
-  lines_redux %>%
+  lines_redux_wo_delim %>%
+  filter(line_type == 'text') %>%
   group_by(year, section_label) %>%
   summarise(text = paste(line, collapse = ' ', sep = '')) %>%
   ungroup() %>%
+  # mutate_at(vars(text), ~str_replace_all(., '(\\s)([\\”\\)\\(])(\\s)', ' \1')) %>%
+  # mutate_at(vars(text), ~str_replace_all(., '(\\s)([\\”\\)\\(])([.])', ' \2.'))
+  mutate_at(vars(text), ~str_replace_all(., '\\s([.])', '.'))
+body_redux_wo_delim
+body_redux_wo_delim %>% slice(c(1)) %>% pull(text) %>% clipr::write_clip()
+sents_redux_wo_delim <-
+  body_redux_wo_delim %>%
   tidytext::unnest_tokens(
     output = sentence,
     input = text,
+    # token = 'sents_redux_wo_delim'
     token = 'regex',
-    pattern = '(?=)([a-z]\\s[.]\\s)',
-    to_lower = FALSE
+    # pattern = '(?=)([a-z]{2,}|[)])([.]\\s\\”|[.])\\s'
+    pattern = '([a-z]{2,}|[)])([.]\\s\\”|[.])\\s'
   ) %>%
   mutate_at(vars(sentence), str_trim)
-sentences
-lines_redux %>% filter(line %>% str_detect('the operating reserve adder was implemented'))
-sentences %>% filter(sentence %>% str_detect('the operating reserve adder was implemented'))
-sentences %>% filter(sentence %>% str_detect('QQ'))
+sents_redux_wo_delim
+
+# WIP, end? ----
+lines_redux_w_delim %>% filter(line %>% str_detect('the operating reserve adder was implemented'))
+sents_redux_wo_delim %>% filter(sentence %>% str_detect('the operating reserve adder was implemented'))
+sents_redux_wo_delim %>% filter(sentence %>% str_detect('QQ'))
 
 # NOTE: `n_spaces` chosen subjectively.
 # NOTE: It's evident that there is still some "clutter"
-sentences_filt <-
-  sentences %>%
+sents_redux_wo_delim_filt <-
+  sents_redux_wo_delim %>%
   mutate_at(vars(sentence), list(n_spaces = ~str_split(., '[a-z]+') %>% purrr::map_int(length))) %>%
   filter(n_spaces > 4)
-sentences_filt
-sentences_filt %>% arrange(n_spaces)
+sents_redux_wo_delim_filt
+sents_redux_wo_delim_filt %>% arrange(n_spaces)

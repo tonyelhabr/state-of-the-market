@@ -44,7 +44,7 @@
 # }
 #
 # words_pmi <-
-#   lines_redux %>%
+#   lines_redux_w_delim %>%
 #   tidytext::unnest_tokens(output = word, input = line) %>%
 #   add_count(word) %>%
 #   filter(n >= 20) %>%
@@ -64,8 +64,8 @@
 #+ lines_tfidf-1, include=F, eval=F, echo=F
 # FIXME: Using this?
 lines_tfidf <-
-  # lines_redux %>%
-  lines_redux_filt %>%
+  # lines_redux_w_delim %>%
+  lines_redux_w_delim_filt %>%
   count(year, line) %>%
   # mutate(n = 1) %>%
   tidytext::bind_tf_idf(line, year, n) %>%
@@ -85,7 +85,7 @@ lines_tfidf_top
 #+ lines_redux_n-1, include=F#, eval=F, echo=F
 # FIXME: Using this?
 lines_redux_n <-
-  lines_redux_filt %>%
+  lines_redux_w_delim_filt %>%
   count(line_type, line, sort = TRUE) %>%
   # filter(!(line_type %in% c("page_footer", "section_alphanumeric_label"))) %>%
   filter(line_type == "text")

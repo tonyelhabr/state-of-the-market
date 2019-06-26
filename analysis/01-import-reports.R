@@ -1,11 +1,9 @@
 
 
-years <- 2016L:2018L
 paths <-
   years %>%
   purrr::map_chr(download_sotmreport)
 paths
-
 
 paths <-
   list.files(
@@ -14,7 +12,6 @@ paths <-
     full.names = TRUE
   )
 paths
-
 
 paths_info <-
   paths %>%

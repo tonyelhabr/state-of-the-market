@@ -8,7 +8,8 @@ library("teplot")
 # library("awtools")
 filter <- dplyr::filter
 
-#+ functions-1, include=F
+years <- 2016L:2018L
+
 # "https://www.potomaceconomics.com/wp-content/uploads/2019/06/2018-State-of-the-Market-Report.pdf"
 # "https://www.potomaceconomics.com/wp-content/uploads/2018/05/2017-State-of-the-Market-Report.pdf"
 # "https://www.potomaceconomics.com/wp-content/uploads/2017/06/2016-ERCOT-State-of-the-Market-Report.pdf"
@@ -570,3 +571,66 @@ pull_distinctly <- function (.data, var = -1, ..., decreasing = FALSE)  {
   var <- tidyselect::vars_pull(names(.data), !!rlang::enquo(var))
   sort(unique(.data[[var]]), decreasing = decreasing, ...)
 }
+
+do_calcaulate_sentence_sim <- function(data, col = 'sentence', col_filt = 'year', value1 = NULL, value2 = NULL, ...)  {
+  # data <- sents_redux_wo_delim
+  col_sym <- sym(col)
+  col_filt_sym <- sym(col_filt)
+  if(is.null(value1) | is.null(value1)) {
+    values <- data %>% pull_distinctly(year)
+  }
+  compute_token_sim()
+}
+
+compute_token_sim <- function(x1, x2, method = 'cosine', norm = 'l2', ..., progressbar = FALSE, postprocess = TRUE) {
+
+  require(Matrix)
+  require(data.table)
+
+  stopifnot(is.vector(x1), is.vector(x2))
+  stopifnot(is.character(x1), is.character(x2))
+
+  it1 <- x1 %>% text2vec::itoken(progressbar = progressbar, ...)
+  # it1
+  it2 <- x2 %>% text2vec::itoken(progressbar = progressbar, ...)
+  # it2
+  x <- c(x1, x2) %>% unique()
+  it <- x %>% text2vec::itoken(progressbar = progressbar, ...)
+  # it
+  v <- it %>% text2vec::create_vocabulary()
+  # v
+  vectorizer <- v %>% text2vec::vocab_vectorizer()
+  # vectorizer
+  dtm1 <- it1 %>% text2vec::create_dtm(vectorizer = vectorizer)
+  # dtm1[1:10, 1:10]
+  dtm2 <- it2 %>% text2vec::create_dtm(vectorizer = vectorizer)
+  # dtm2[1:10, 10:12]
+  sim <- text2vec::sim2(dtm1, dtm2, method = method, norm = norm)
+
+  tmat_sim <- as(sim, "TsparseMatrix")
+  dt_sim_all <- data.table(
+    idx1 = tmat_sim@i + 1L,
+    idx2 = tmat_sim@j + 1L,
+    value = tmat_sim@x
+  )
+  # dt_sim_all
+
+  res <- dt_sim_all[,
+                    {
+                      k = which.max(value)
+                      list(idx2 = idx2[[k]], sim_max = value[[k]])
+                    },
+                    keyby = idx1]
+  if(postprocess) {
+    res <- res %>% as_tibble() %>% select(idx1, idx2, sim_max)
+  }
+  res
+}
+
+# compute_token_sim_cos <- compute_token_sim
+#
+# compute_token_sim_jac <- function(...,method = 'jaccard', norm = 'none') {
+#   compute_token_sim(..., method = method, norm = norm)
+# }
+
+
