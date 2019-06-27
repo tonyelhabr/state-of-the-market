@@ -76,7 +76,7 @@ body_rngs
 
 lines_sections <-
   lines_aug %>%
-  inner_join(body_rngs) %>%
+  left_join(body_rngs) %>%
   # NOTE: Get rid of the executive summary section.
   filter(idx_page >= page_start) %>%
   group_by(year) %>%
@@ -94,7 +94,26 @@ lines_sections <-
   ) %>%
   select(-matches('[.]y|page_[se]')) %>%
   rename(year = year.x)
-lines_sections
+
+# # NOTE: Do this to include Executive Summary stuff,
+# # but then need to change other things later.
+# lines_sections <-
+#   bind_rows(
+#     lines_aug %>%
+#       left_join(body_rngs) %>%
+#       filter(idx_page < page_start) %>%
+#       mutate(page_num = NA_real_, idx_section = 0, section_label = 'Summary'),
+#     lines_sections
+#   ) %>%
+#   mutate_at(
+#     vars(section_label),
+#     ~forcats::fct_reorder(., idx_section)
+#   ) %>%
+#   arrange(year, idx_page)
+# lines_sections
+#
+# lines_sections %>% filter(is.na(section_label))
+# lines_sections %>% pull_distinctly(section_label) %>% levels()
 
 rgx_month_abbs <-
   month.abb %>%
@@ -125,12 +144,12 @@ rgx_months
 # TODO(?)
 # month_abbs2 <- c('m', 'j', 'j', 'a', 's', 'o', 'n', 'd')
 
-zones <- c('houston', 'north', 'south', 'west')
-rgx_zones <-
-  zones %>%
-  purrr::map_chr(~paste_collapse(., start = '', end = '', collapse = '\\s')) %>%
-  paste_collapse_loosely()
-rgx_zones
+# zones <- c('houston', 'north', 'south', 'west')
+# rgx_zones <-
+#   zones %>%
+#   purrr::map_chr(~paste_collapse(., start = '', end = '', collapse = '\\s')) %>%
+#   paste_collapse_loosely()
+# rgx_zones
 
 # words ----
 words <-
@@ -239,7 +258,10 @@ body_redux_wo_delim <-
   # mutate_at(vars(text), ~str_replace_all(., '(\\s)([\\”\\)\\(])([.])', ' \2.'))
   mutate_at(vars(text), ~str_replace_all(., '\\s([.])', '.'))
 body_redux_wo_delim
-body_redux_wo_delim %>% slice(c(1)) %>% pull(text) %>% clipr::write_clip()
+
+# # Testing regex.
+# body_redux_wo_delim %>% slice(c(1)) %>% pull(text) %>% clipr::write_clip()
+
 sents_redux_wo_delim <-
   body_redux_wo_delim %>%
   tidytext::unnest_tokens(
@@ -253,7 +275,6 @@ sents_redux_wo_delim <-
   mutate_at(vars(sentence), str_trim)
 sents_redux_wo_delim
 
-# WIP, end? ----
 lines_redux_w_delim %>% filter(line %>% str_detect('the operating reserve adder was implemented'))
 sents_redux_wo_delim %>% filter(sentence %>% str_detect('the operating reserve adder was implemented'))
 sents_redux_wo_delim %>% filter(sentence %>% str_detect('QQ'))

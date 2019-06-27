@@ -1,6 +1,6 @@
 
-# library('cowplot')
 # viz_content_section_n ----
+# library('cowplot')
 .viz_sents_section_n <-
   sents_section_n %>%
   do_visualize_x_vs_y(
@@ -12,7 +12,7 @@
     # y_arrw_up_buffer = -1,
     # x_arrw_down_buffer = 1,
     # y_arrw_down_buffer = -1,
-    label_arrw = 'sents_redux_wo_delim'
+    label_arrw = 'sentences'
   )
 .viz_sents_section_n
 
@@ -22,7 +22,7 @@ viz_sents_section_n <-
   theme_sotmreport() +
   labs(
     x = 'Number of pages in section',
-    y = 'Count of total sents_redux_wo_delim in each section',
+    y = 'Count of total sentences in each section',
     title = glue::glue(
       'Is there a Relationship Beween Counts of Pages and Sentences in Sections?'
     ),
@@ -66,7 +66,7 @@ viz_sents_section_n_yr <-
     x = NULL,
     title = str_to_title('How Has the Count of Sentences Per Section Changed Over Time?'),
     subtitle = glue::glue(
-      'The number of sents_redux_wo_delim has increased from 2016 to 2018 for all sections, but some sections
+      'The number of sententences has increased from 2016 to 2018 for all sections, but some sections
       either saw a small increase or a decrease going from 2016 to 2017, and two (Reliability
       and Resource Adequacy) experienced a noticeable increase going from 2017 to 2018.'
     ),
@@ -81,6 +81,102 @@ teproj::export_ext_png(
   units = .units,
   height = 8,
   width = 10
+)
+
+
+# viz_sents_section_sim ----
+# sents_sim_lvls <- summ_sents_section_sim %>% pull_distinctly(section_label) %>% levels()
+# sents_sim_lvls
+.data_y <-
+  section_labels %>%
+  inner_join(summ_sents_section_sim)
+.data_y
+
+.labs_y <-
+  .data_y %>%
+  arrange(idx) %>%
+  mutate_at(vars(section_label), as.character) %>%
+  # NOTE: Not sure why, but `pull_distinctly()` isn't working here.
+  distinct(section_label) %>%
+  pull(section_label)
+.labs_y
+
+.viz_sents_section_sim <-
+  sents_sim %>%
+  left_join(summ_sents_section_sim %>% select(grp_label, idx)) %>%
+  mutate_at(vars(idx), as.character) %>%
+  ggplot() +
+  aes(x = sim_max, y = section_label, color = section_label) +
+  # ggridges::geom_density_ridges() +
+  ggbeeswarm::geom_quasirandom(
+    alpha = 0.2,
+    groupOnX = FALSE
+  ) +
+  scale_y_discrete(labels = .labs_y) +
+  scale_x_continuous(
+    breaks = c(0.25, 0.5, 0.75, 1),
+    labels = c("<=0.25", "0.5", "0.75", "1"),
+    limits = c(0.15, 1.1)
+  ) +
+  scale_color_section() +
+  guides(color = FALSE) +
+  facet_wrap(~grp_label) +
+  # coord_cartesian(xlim = c(0, 1.2)) +
+  theme_sotmreport() +
+  # theme(
+  #   panel.grid.major.y = element_blank()
+  # ) +
+  theme(
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    # axis.text.y = element_blank(),
+    legend.position = 'right',
+    plot.caption = element_text(hjust = 1)
+  ) +
+  labs(
+    color = '',
+    title = '',
+    subtitle = '',
+    caption = viz_footer,
+    x = 'L2 Normalized Cosine Similarity of Sentences',
+    y = NULL
+  )
+.viz_sents_section_sim
+
+viz_sents_section_sim <-
+  cowplot::ggdraw(.viz_sents_section_sim) +
+  cowplot::draw_text(
+    text = str_to_title('How Similar Are the Most Similar Sentences From Year to Year?'),
+    x = 0.01,
+    y = 0.99,
+    hjust = 0,
+    vjust = 1,
+    size = 22,
+    fontface = 'bold'# ,
+    # family = 'Arial Narrow'
+    # family = ''
+  ) +
+  cowplot::draw_text(
+    text = str_wrap(glue::glue(
+      'Cosine similarity (used to quantify text similarity) suggest that there is lots of copied language from one year\'s report to another.'
+    ), 200),
+    x = 0.01,
+    y = 0.95,
+    hjust = 0,
+    vjust = 1,
+    size = 14# ,
+    # family = ''
+  )
+viz_sents_section_sim
+
+teproj::export_ext_png(
+  viz_sents_section_sim,
+  # file = 'viz_words_section_tfidf',
+  export = .export_viz,
+  dir = .dir_viz,
+  units = .units,
+  height = 8,
+  width = 14
 )
 
 # viz_words_section_tfidf ----
@@ -99,9 +195,7 @@ teproj::export_ext_png(
 .viz_words_section_tfidf <-
   words_section_tfidf_filt %>%
   mutate(tf_idf = dplyr::if_else(tf_idf > 0.001, 0.001, tf_idf)) %>%
-  left_join(
-    summ_words_section_tfidf_filt
-  ) %>%
+  left_join(summ_words_section_tfidf_filt) %>%
   ggplot() +
   aes(
     y = idx,
@@ -140,13 +234,13 @@ teproj::export_ext_png(
     arrow = create_gg_arrw()
   ) +
   geom_text(
+    data = tibble(x = 0.00053, y = '1', lab = glue::glue('"x" marks the average.')),
     inherit.aes = FALSE,
-    aes(x = 0.00053, y = '1'),
+    aes(x = x, y = y, label = lab),
     size = 4,
     hjust = 0,
     # family = 'Arial',
-    fontface = 'italic',
-    label = glue::glue('"x" marks the average.')
+    fontface = 'italic'
   ) +
   geom_segment(
     inherit.aes = FALSE,
@@ -160,16 +254,13 @@ teproj::export_ext_png(
     arrow = create_gg_arrw()
   ) +
   geom_text(
+    data = tibble(x = 0.00077, y = '3', lab = glue::glue('More "unique"')),
     inherit.aes = FALSE,
-    aes(
-      x = 0.00077,
-      y = '3'
-    ),
+    aes(x = x, y = y, label = lab),
     size = 4,
     hjust = 0,
     # family = 'Arial',
-    fontface = 'italic',
-    label = glue::glue('More "unique"')
+    fontface = 'italic'
   ) +
   scale_y_discrete(
     labels = .labs_y
@@ -187,7 +278,7 @@ teproj::export_ext_png(
     panel.grid.major.y = element_blank(),
     # axis.text.y = element_blank(),
     legend.position = 'right',
-    plot.caption = element_text(hjust = 0)
+    plot.caption = element_text(hjust = 1)
   ) +
   labs(
     # color = 'Section',
@@ -249,16 +340,16 @@ viz_words_tfidf <-
     min.segment.length = Inf
   ) +
   geom_text(
-    aes(x = '2016', y = 14),
+    data = tibble(x = '2016', y = 14, lab = glue::glue(
+      '* This plot shows counts even though the
+      words were identified by highest TFIDF.'
+    )),
+    aes(x = '2016', y = 14, label = lab),
     size = 4,
     hjust = 1,
     color = 'black',
     # family = 'Arial',
-    fontface = 'italic',
-    label = glue::glue(
-    '* This plot shows counts even though the
-      words were identified by highest TFIDF.'
-    )
+    fontface = 'italic'
   ) +
   scale_color_year() +
   scale_size_continuous(range = c(6, 9)) +
@@ -291,4 +382,3 @@ teproj::export_ext_png(
   height = 7,
   width = 13
 )
-

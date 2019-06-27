@@ -132,7 +132,10 @@ toc_sections <-
   rename(year = year.x)
 toc_sections
 
-section_label_lvls <- section_rngs %>% pull(section_label) %>% levels()
+section_label_lvls <-
+  section_rngs %>%
+  pull(section_label) %>%
+  levels() # %>% c('Summary', .)
 section_label_lvls
 
 section_rngs_n <-
