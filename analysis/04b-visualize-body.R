@@ -1,12 +1,11 @@
 
 # viz_content_section_n ----
-# library('cowplot')
 .viz_sents_section_n <-
   sents_section_n %>%
   do_visualize_x_vs_y(
     arrws = FALSE,
     x_cor = 31,
-    y_cor = 6,
+    y_cor = 12,
     x_arrw = 40,
     # x_arrw_up_buffer = -0.5,
     # y_arrw_up_buffer = -1,
@@ -28,11 +27,15 @@ viz_sents_section_n <-
     ),
     subtitle = glue::glue(
       'As with the number of pages per section and the number of {viz_label_content} per section,
-      there is NO correlation between the number of pages per section and the number of sents_redux_wo_delim per section.'
+      there is NO correlation between the number of pages per section and the number of sentences per section.'
     ),
     caption = viz_footer
   )
 viz_sents_section_n
+
+g_sents_section_n <- viz_sents_section_n %>% ggplotGrob()
+g_sents_section_n %>% pluck ('layout') %>% as_tibble()
+g_sents_section_n %>% pluck ('layout') %>% as_tibble() %>% filter(name %>% str_detect('title'))
 
 teproj::export_ext_png(
   viz_sents_section_n,
@@ -74,6 +77,10 @@ viz_sents_section_n_yr <-
   )
 viz_sents_section_n_yr
 
+g_sents_section_n_yr <- viz_sents_section_n_yr %>% ggplotGrob()
+g_sents_section_n_yr %>% pluck ('layout') %>% as_tibble()
+g_sents_section_n_yr %>% pluck ('layout') %>% as_tibble() %>% filter(name %>% str_detect('title'))
+
 teproj::export_ext_png(
   viz_sents_section_n_yr,
   export = .export_viz,
@@ -92,16 +99,47 @@ teproj::export_ext_png(
   inner_join(summ_sents_section_sim)
 .data_y
 
-.labs_y <-
+.labs_y_idx <-
   .data_y %>%
   arrange(idx) %>%
   mutate_at(vars(section_label), as.character) %>%
+  distinct(idx, section_label)
+.labs_y_idx
+
+.labs_y <-
+  .labs_y_idx %>%
   # NOTE: Not sure why, but `pull_distinctly()` isn't working here.
   distinct(section_label) %>%
   pull(section_label)
 .labs_y
 
-.viz_sents_section_sim <-
+.colors_section <- ggthemes::ggthemes_data[['tableau']][['color-palettes']][['regular']][['Tableau 10']]
+
+.colors_section_labels <-
+  section_labels %>%
+  inner_join(.colors_section %>% mutate(idx_section = row_number()))
+.colors_section_labels
+
+.colors_section_labels_new <-
+  .labs_y_idx %>%
+  inner_join(.colors_section_labels %>% select(-section_label, idx = idx_section))
+.colors_section_labels_new
+
+.colors_named <-
+  .colors_section_labels %>%
+  select(section_label, value) %>%
+  deframe()
+.colors_named
+
+# NOTE: This is technically "wrong", but it gets "corrected" when the y-axis labels are re-ordered
+.colors_renamed <-
+  .colors_section_labels_new %>%
+ #  select(idx, value) %>%
+  select(section_label, value) %>%
+  deframe()
+.colors_renamed
+
+viz_sents_section_sim <-
   sents_sim %>%
   left_join(summ_sents_section_sim %>% select(grp_label, idx)) %>%
   mutate_at(vars(idx), as.character) %>%
@@ -112,66 +150,66 @@ teproj::export_ext_png(
     alpha = 0.2,
     groupOnX = FALSE
   ) +
+  # scale_color_section() +
+  scale_color_manual(values = .colors_renamed) +
+  geom_text(
+    data =
+      summ_sents_section_sim %>%
+      arrange(grp_label, desc(idx)) %>%
+      mutate(lab = ifelse(
+        row_number() == 1,
+        sprintf('Mean:\n%.3f', sim_max_mean),
+        sprintf('%.3f', sim_max_mean)
+      )
+      ) %>%
+      mutate_at(vars(idx), as.character) %>%
+      mutate(x = 0.4),
+    aes(x = x, label = lab),
+    color = 'black',
+    # vjust = 1,
+    nudge_y = 0.3,
+    hjust = 1
+  ) +
   scale_y_discrete(labels = .labs_y) +
   scale_x_continuous(
     breaks = c(0.25, 0.5, 0.75, 1),
     labels = c("<=0.25", "0.5", "0.75", "1"),
     limits = c(0.15, 1.1)
   ) +
-  scale_color_section() +
+  # ggthemes::scale_color_tableau(labels = .labs_y) +
   guides(color = FALSE) +
   facet_wrap(~grp_label) +
   # coord_cartesian(xlim = c(0, 1.2)) +
   theme_sotmreport() +
-  # theme(
-  #   panel.grid.major.y = element_blank()
-  # ) +
   theme(
+    # plot.caption = element_text(hjust = 1),
     axis.ticks.y = element_blank(),
-    panel.grid.major.y = element_blank(),
-    # axis.text.y = element_blank(),
-    legend.position = 'right',
-    plot.caption = element_text(hjust = 1)
+    panel.grid.major.y = element_blank()
   ) +
   labs(
     color = '',
-    title = '',
-    subtitle = '',
+    title = str_to_title('How Similar Are the Most Similar Sentences From Year to Year?'),
+    subtitle = glue::glue(
+      'Cosine similarity (a metric used to quantify text similarity) of sentences suggests that there is lots of
+      across the reports, irregardless of section.'
+    ),
     caption = viz_footer,
     x = 'L2 Normalized Cosine Similarity of Sentences',
     y = NULL
   )
-.viz_sents_section_sim
-
-viz_sents_section_sim <-
-  cowplot::ggdraw(.viz_sents_section_sim) +
-  cowplot::draw_text(
-    text = str_to_title('How Similar Are the Most Similar Sentences From Year to Year?'),
-    x = 0.01,
-    y = 0.99,
-    hjust = 0,
-    vjust = 1,
-    size = 22,
-    fontface = 'bold'# ,
-    # family = 'Arial Narrow'
-    # family = ''
-  ) +
-  cowplot::draw_text(
-    text = str_wrap(glue::glue(
-      'Cosine similarity (used to quantify text similarity) suggest that there is lots of copied language from one year\'s report to another.'
-    ), 200),
-    x = 0.01,
-    y = 0.95,
-    hjust = 0,
-    vjust = 1,
-    size = 14# ,
-    # family = ''
-  )
 viz_sents_section_sim
 
+g_sents_section_sim <- viz_sents_section_sim %>% ggplotGrob()
+g_sents_section_sim %>% pluck ('layout') %>% as_tibble() %>% filter(name %>% str_detect('title'))
+g_sents_section_sim %>% pluck ('layout') %>% pull('name')
+# g_sents_section_sim %>% gtable::gtable_show_layout()
+g_sents_section_sim$layout$l[g_sents_section_sim$layout$name == 'title'] <- 4
+g_sents_section_sim$layout$l[g_sents_section_sim$layout$name == 'subtitle'] <- 4
+g_sents_section_sim$layout$l[g_sents_section_sim$layout$name == 'caption'] <- 4
+g_sents_section_sim %>% grid::grid.draw()
+
 teproj::export_ext_png(
-  viz_sents_section_sim,
-  # file = 'viz_words_section_tfidf',
+  file = 'viz_sents_section_sim',
   export = .export_viz,
   dir = .dir_viz,
   units = .units,
@@ -180,6 +218,7 @@ teproj::export_ext_png(
 )
 
 # viz_words_section_tfidf ----
+# NOTE: This viz takes a different approach with labelling y-axis elements!
 .data_y <-
   section_labels %>%
   inner_join(summ_words_section_tfidf_filt)
@@ -192,7 +231,7 @@ teproj::export_ext_png(
   pull(section_label)
 .labs_y
 
-.viz_words_section_tfidf <-
+viz_words_section_tfidf <-
   words_section_tfidf_filt %>%
   mutate(tf_idf = dplyr::if_else(tf_idf > 0.001, 0.001, tf_idf)) %>%
   left_join(summ_words_section_tfidf_filt) %>%
@@ -227,19 +266,18 @@ teproj::export_ext_png(
   ) +
   geom_curve(
     inherit.aes = FALSE,
-    aes(x = 0.00052, y = '1', xend = 0.00016, yend = '1'),
+    aes(x = 0.00061, y = '2', xend = 0.00016, yend = '1'),
     size = 1,
     # angle = -75,
     curvature = -0.25,
     arrow = create_gg_arrw()
   ) +
   geom_text(
-    data = tibble(x = 0.00053, y = '1', lab = glue::glue('"x" marks the average.')),
+    data = tibble(x = 0.00062, y = '2', lab = glue::glue('"x" = average.')),
     inherit.aes = FALSE,
     aes(x = x, y = y, label = lab),
-    size = 4,
+    # size = 4,
     hjust = 0,
-    # family = 'Arial',
     fontface = 'italic'
   ) +
   geom_segment(
@@ -254,12 +292,11 @@ teproj::export_ext_png(
     arrow = create_gg_arrw()
   ) +
   geom_text(
-    data = tibble(x = 0.00077, y = '3', lab = glue::glue('More "unique"')),
+    data = tibble(x = 0.00075, y = '3', lab = glue::glue('More "unique"')),
     inherit.aes = FALSE,
     aes(x = x, y = y, label = lab),
-    size = 4,
+    # size = 4,
     hjust = 0,
-    # family = 'Arial',
     fontface = 'italic'
   ) +
   scale_y_discrete(
@@ -267,55 +304,37 @@ teproj::export_ext_png(
   ) +
   scale_color_section() +
   scale_x_continuous(
-    # limits = c(0, 0.0014),
     limits = c(0, 0.001),
     breaks = seq(0, 0.001, length.out = 5),
     labels = c('0', '', '0.0005', '', '>=0.001')
   ) +
   theme_sotmreport() +
   theme(
+    # plot.caption = element_text(hjust = 1),
     axis.ticks.y = element_blank(),
-    panel.grid.major.y = element_blank(),
-    # axis.text.y = element_blank(),
-    legend.position = 'right',
-    plot.caption = element_text(hjust = 1)
+    panel.grid.major.y = element_blank()
   ) +
   labs(
     # color = 'Section',
-    # title = glue::glue('Which section is the most 'unique' relative to the others?'),
-    title = '',
-    subtitle = '\n\n',
+    title = str_to_title('Which Section Has the Most "Unique" Words Relative to the Others?'),
+    subtitle = glue::glue(
+      'Term frequency-inverse document frequency (TFIDF) of stemmed words across the 3 reports indicates that
+       the Analysis section has the most words (excluding stop words, numbers, and words related to dates).'
+    ),
     caption = viz_footer,
     x = glue::glue('TFIDF of words in {.viz_label_potamac}'),
     y = NULL
   )
-.viz_words_section_tfidf
-
-viz_words_section_tfidf <-
-  cowplot::ggdraw(.viz_words_section_tfidf) +
-  cowplot::draw_text(
-    text = str_to_title('Which Section Has the Most "Unique" Words Relative to the Others?'),
-    x = 0.01,
-    y = 0.99,
-    hjust = 0,
-    vjust = 1,
-    size = 22,
-    fontface = 'bold',
-    family = 'Arial Narrow'
-  ) +
-  cowplot::draw_text(
-    text = glue::glue(
-      'Term frequency-inverse document frequency (TFIDF) of stemmed words across the 3 reports indicates that
-       the Analysis section has the most words (excluding stop words, numbers, and words related to dates).'
-    ),
-    x = 0.01,
-    y = 0.95,
-    hjust = 0,
-    vjust = 1,
-    size = 14,
-    family = 'Arial'
-  )
 viz_words_section_tfidf
+
+g_words_section_tfidf <- viz_words_section_tfidf %>% ggplotGrob()
+g_words_section_tfidf %>% pluck ('layout') %>% as_tibble() %>% filter(name %>% str_detect('title'))
+g_words_section_tfidf %>% pluck ('layout') %>% pull('name')
+# g_words_section_tfidf %>% gtable::gtable_show_layout()
+g_words_section_tfidf$layout$l[g_words_section_tfidf$layout$name == 'title'] <- 4
+g_words_section_tfidf$layout$l[g_words_section_tfidf$layout$name == 'subtitle'] <- 4
+g_words_section_tfidf$layout$l[g_words_section_tfidf$layout$name == 'caption'] <- 4
+g_words_section_tfidf %>% grid::grid.draw()
 
 teproj::export_ext_png(
   viz_words_section_tfidf,
@@ -324,7 +343,7 @@ teproj::export_ext_png(
   dir = .dir_viz,
   units = .units,
   height = 8,
-  width = 10
+  width = 12
 )
 
 # viz_words_tfidf ----
@@ -344,9 +363,10 @@ viz_words_tfidf <-
       '* This plot shows counts even though the
       words were identified by highest TFIDF.'
     )),
-    aes(x = '2016', y = 14, label = lab),
+    aes(x = x, y = y, label = lab),
     size = 4,
     hjust = 1,
+    nudge_x = 0.3,
     color = 'black',
     # family = 'Arial',
     fontface = 'italic'
@@ -382,3 +402,4 @@ teproj::export_ext_png(
   height = 7,
   width = 13
 )
+

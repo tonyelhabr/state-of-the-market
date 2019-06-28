@@ -101,3 +101,40 @@ summ_sents_section_sim
 # tmat_sim
 # sents_sim %>% group_by(idx_grp) %>% select(sim_max) %>% skimr::skim()
 # sents_sim %>% ggplot() + aes(x = sim_max) + geom_histogram() + facet_wrap(~idx_grp)
+
+sim_data_ex <-
+  tibble(
+    x1 = 'abcde',
+    x2 = c('abcde', 'zbcde', 'zycde', 'fghij', 'baecd', 'aabcde', 'aaabcde', 'abcdef', 'abcd'),
+    description =
+      c('Identical strings.',
+        'One different character ("z" in `String 2` instead of "a").',
+        'Two different characters  ("z" and "y" in `String 2` instead of "a" and "b").',
+        'All different characters.',
+        'Different ordering of characters, but identical characters.',
+        'Repeated characters ("a" in `String 2`), one-character difference in string lengths.',
+        'Repeated characters ("a" twice in `String 2`), two-character difference in string lengths.',
+        'Same characters, one additional character ("z" in `String 2`) in one string.',
+        'Same characters, one additional character ("e" in `String 1`) in one string.'
+      )
+  ) %>%
+  mutate(idx = row_number())
+sim_data_ex
+sim_ex <-
+  sim_data_ex %>%
+  tidystringdist::tidy_stringdist(x1, x2) %>%
+  mutate(cosine_sim = 1 - cosine)
+sim_ex
+
+sim_ex_show <-
+  sim_ex %>%
+  mutate_at(vars(cosine_sim), ~round(., 2) %>% sprintf('%.2f', .)) %>%
+  select(
+    `Case` = idx,
+    `Description` = description,
+    `String 1` = x1,
+    `String 2` = x2,
+    `Cosine Similarity` = cosine_sim
+  ) %>%
+  create_kable_md()
+sim_ex_show

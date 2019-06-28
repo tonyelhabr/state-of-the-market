@@ -42,7 +42,7 @@ toc_content_n1_show <-
     Type = line_type,
     Label = label
   ) %>%
-  create_kable()
+  create_kable_md()
 toc_content_n1_show
 
 summ_toc_content_n1 <-

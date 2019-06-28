@@ -221,6 +221,7 @@ words_aug
 words_filt <-
   words_aug %>%
   drop_words_generic() %>%
+  filter(!is_punct) %>%
   anti_join(stop_words)
 words_filt
 

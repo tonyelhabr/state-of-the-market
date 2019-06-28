@@ -340,34 +340,8 @@ viz_label_content <- "figures and tables"
 # .height <- 7
 # .width <- 7
 
-create_kable <-
-  function (data,
-            n_show = Inf,
-            show_footnote = ifelse(nrow(data) >
-                                     n_show, TRUE, FALSE),
-            n_footnote = nrow(data),
-            format = "html",
-            ...,
-            full_width = FALSE,
-            position = "center") {
-    stopifnot(is.data.frame(data))
-    res <- data
-    if (show_footnote & (n_show < nrow(data))) {
-      res <- res[1:n_show,]
-    }
-    res <- knitr::kable(res, format = format, escape = FALSE)
-    if (format == "html") {
-      res <- kableExtra::kable_styling(res, full_width = full_width,
-                                       position = position)
-      if (show_footnote) {
-        res <-
-          kableExtra::add_footnote(res, c(sprintf(
-            "# of total rows: %s",
-            .format_total(n_footnote)
-          )), notation = "number")
-      }
-    }
-    res
+create_kable_md <- function (data) {
+    knitr::kable(data, format = 'markdown', escape = FALSE)
   }
 
 .buffer_arrw <- 1
